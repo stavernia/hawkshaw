@@ -1,0 +1,61 @@
+{
+  "name": "hawkshaw",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=20.11.0 <23",
+    "pnpm": ">=10.0.0 <11"
+  },
+  "scripts": {
+    "changeset": "changeset",
+    "dev": "next dev --webpack",
+    "build": "prisma generate && next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run test:unit",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "echo 'Playwright not installed yet. Add it when Hawkshaw has first real user flows.'",
+    "env:check": "node scripts/setup/check-env.mjs",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "version-packages": "changeset version",
+    "release": "pnpm version-packages",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.2",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@supabase/ssr": "0.10.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.542.0",
+    "next": "16.1.4",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.30.0",
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/node": "^20.17.24",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.22.0",
+    "eslint-config-next": "16.1.4",
+    "postcss": "^8.5.6",
+    "prettier": "^3.8.1",
+    "prisma": "^6.19.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
