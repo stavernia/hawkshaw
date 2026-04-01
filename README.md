@@ -61,7 +61,6 @@ pnpm install
 4. Generate Prisma client and start the app:
 
 ```bash
-pnpm run env:check
 pnpm dev
 ```
 
@@ -106,7 +105,6 @@ Required Supabase dashboard setup:
 - `pnpm test`
 - `pnpm test:unit`
 - `pnpm test:e2e`
-- `pnpm env:check`
 - `pnpm db:generate`
 - `pnpm db:push`
 - `pnpm db:studio`
