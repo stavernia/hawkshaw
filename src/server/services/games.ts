@@ -1,6 +1,13 @@
-import type { GameSummary } from "@/src/features/games/types";
-
-export async function listGamesPlaceholder(): Promise<GameSummary[]> {
-  return [];
-}
-
+export {
+  createPrototypeGame,
+  ensurePrototypeScenario,
+  getHostGameDetailForGame,
+  getHostGameList,
+  removeParticipantFromSeat,
+  resetGameToPregame,
+  revealGame,
+  startActTwo,
+  startFinale,
+  startPhaseOne,
+  triggerEventPhaseTwo,
+} from "@/src/server/services/prototype";

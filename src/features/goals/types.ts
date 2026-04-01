@@ -6,5 +6,6 @@ export type GoalSummary = {
   id: EntityId;
   title: string;
   status: GoalStatus;
+  description?: string;
+  points?: number;
 };
-

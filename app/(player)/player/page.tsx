@@ -1,21 +1,32 @@
-import { PlaceholderShell } from "@/src/components/layout/placeholder-shell";
-import { getCurrentUser } from "@/src/lib/auth/session";
+import { redirect } from "next/navigation";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { requireCurrentSessionUser } from "@/src/lib/auth/session";
+import { SITE_ROUTES } from "@/src/config/routes";
+import { getLatestPlayerGameIdForUser } from "@/src/server/services/prototype";
 
-export default async function PlayerPage() {
-  const user = await getCurrentUser();
+export const dynamic = "force-dynamic";
+
+export default async function PlayerHomeRedirectPage() {
+  const user = await requireCurrentSessionUser("/player");
+  const gameId = await getLatestPlayerGameIdForUser(user.id);
+
+  if (gameId) {
+    redirect(SITE_ROUTES.gamePlayer(gameId));
+  }
 
   return (
-    <PlaceholderShell
-      eyebrow="Player shell"
-      title="Player dashboard placeholder"
-      description="This route is ready for role info, goals, clues, inventory, actions remaining, and accusation flow."
-      summary={[
-        "Assume players use low-friction account-based access.",
-        "Keep the information architecture phase-aware and mobile-first.",
-        "Use separate screens for role, goals, clues, inventory, players, and accusations in the MVP pass.",
-      ]}
-      callout={`Signed in as ${user?.email ?? "player@example.com"}`}
-    />
+    <section className="grid gap-6">
+      <Card className="app-surface border-white/70">
+        <CardHeader>
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Player Dashboard</p>
+          <CardTitle className="font-[family-name:var(--font-heading)] text-5xl leading-none">
+            No Active Game Yet
+          </CardTitle>
+          <CardDescription className="max-w-2xl text-base leading-7">
+            Join a host game code first. Once your seat is claimed, you will be redirected into that game&apos;s player dashboard.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    </section>
   );
 }
-
