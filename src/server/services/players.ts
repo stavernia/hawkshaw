@@ -1,6 +1,20 @@
-import type { PlayerSummary } from "@/src/features/players/types";
-
-export async function listPlayersPlaceholder(): Promise<PlayerSummary[]> {
-  return [];
-}
-
+export {
+  assignPlayerToSeat,
+  eavesdrop,
+  eavesdropAs,
+  getPlayerDashboard,
+  getPlayerDashboardForUser,
+  getRoomViewForUser,
+  joinGameWithUser,
+  pickpocket,
+  plantItem,
+  proposeTrade,
+  removeParticipantFromSeat,
+  resetGameToPregame,
+  respondToTrade,
+  searchRoom,
+  searchRoomAs,
+  startActTwo,
+  submitAccusation,
+  submitDecision,
+} from "@/src/server/services/prototype";

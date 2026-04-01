@@ -28,11 +28,11 @@ export async function updateSession(request: NextRequest) {
   );
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (user) {
-    response.headers.set("x-hawkshaw-user", user.id);
+  if (session?.user?.id) {
+    response.headers.set("x-hawkshaw-user", session.user.id);
   }
 
   return response;

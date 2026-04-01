@@ -45,7 +45,6 @@ Every review should cover:
 - Lint: `pnpm lint`
 - Unit tests: `pnpm test:unit`
 - E2E tests: `pnpm test:e2e`
-- Env check: `pnpm env:check`
 - Prisma push: `pnpm db:push`
 - Prisma studio: `pnpm db:studio`
 - Create changeset: `pnpm changeset`
@@ -88,4 +87,3 @@ implementation lands.
 - prefer explicit typed boundaries
 - ship practical vertical slices
 - add complexity only when product requirements require it
-

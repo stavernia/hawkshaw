@@ -125,3 +125,241 @@ Consequences:
 - `pnpm dev` now runs `next dev --webpack`.
 - `pnpm build` stays on `next build --webpack`.
 - Turbopack can be revisited later once the stack is more mature and stable for this project.
+
+## 2026-03-31 - accepted
+
+Decision:
+Model Hawkshaw MVP content as a seeded scenario definition plus mutable game instance state, with
+player knowledge stored separately from clues.
+
+Context:
+The first playable pass needs reusable structure for future scenarios without spending time on a
+full authoring system. The MVP also needs personalized player detail views that show what a viewer
+knows about another player without making all knowledge into globally shared clues.
+
+Consequences:
+
+- Prisma now separates authored scenario records from runtime game records.
+- A single seeded prototype scenario can drive local playtesting while preserving future multi-scenario expansion.
+- Player-facing clue lists and personalized knowledge views can evolve independently.
+
+## 2026-03-31 - accepted
+
+Decision:
+Implement MVP action resolution through explicit deterministic service handlers instead of a generic
+rules engine.
+
+Context:
+The prototype needs working Search Room, Eavesdrop, Pickpocket, Trade, Plant Item, phase
+transition, accusation, and reveal flows quickly. A generic engine would add abstraction cost
+before the rule set is stable.
+
+Consequences:
+
+- Core game mutations live in focused server-side handlers.
+- Room results are authored as ordered deterministic payloads.
+- More generic trigger/rules infrastructure remains deferred until after playtesting.
+
+## 2026-03-31 - accepted
+
+Decision:
+Use stage terminology aligned to live-mystery play structure: `setup`, `act`, `event`, `finale`,
+and `resolution`, instead of exposing `pregame`/`phase` terminology in the MVP domain.
+
+Context:
+The player and host experience is character- and performance-oriented. Product language should
+match how the game is run in person, and this pass is already reshaping both the backend schema and
+the mobile-first player flows.
+
+Consequences:
+
+- Prisma and service-layer lifecycle naming now align with the product vocabulary.
+- Host controls and player UI can present act/event terminology without translation gaps.
+- Future scenario content can add additional acts/events while preserving the same stage-oriented
+  model.
+
+## 2026-03-31 - accepted
+
+Decision:
+Treat host controls as game-owner scoped operations, using `Game.createdByUserId` as the source of
+truth for host authorization.
+
+Context:
+The prototype supports authenticated players and a separate host surface. Once outside solo local
+testing, signed-in test players should not be able to see or operate another person's host controls
+just because they know the route.
+
+Consequences:
+
+- The host page resolves only the signed-in user's active prototype game.
+- Host mutations validate ownership server-side before changing roster, stage, or reveal state.
+- Dev-only view-as links remain available only through the authorized host surface.
+
+## 2026-03-31 - accepted
+
+Decision:
+Avoid request-wide proxy-based auth for MVP page rendering. Keep auth checks in the routes and
+server actions that actually need them, and reduce navigation latency by keeping player tab changes
+client-side.
+
+Context:
+The proxy-auth header experiment still imposed an auth round trip on every protected navigation,
+while the player dashboard was also doing full server navigations for simple tab changes. That
+produced a poor baseline for a mostly mobile, interaction-heavy app.
+
+Consequences:
+
+- `/host`, `/player`, and `/room` now authenticate directly in the route rather than through a
+  request-wide proxy layer.
+- Mutating actions still use the existing server-side auth helpers for authoritative checks.
+- Player tab changes no longer trigger new server requests, which reduces perceived latency during
+  play.
+
+## 2026-03-31 - accepted
+
+Decision:
+Keep host-controlled character switching on the player surface local once the initial dashboard is
+loaded, and preload the host’s other seat dashboards into the same response.
+
+Context:
+Even after moving player tabs client-side, switching between host-controlled characters still paid
+the full dynamic route cost on every click. That kept host testing and live operational control too
+slow for a mobile-first game flow.
+
+Consequences:
+
+- The initial host-controlled player load now bundles the other seat dashboards for that game.
+- Switching between host-controlled characters on the player surface no longer requires a fresh
+  server navigation.
+- Regular player sessions still use a single dashboard payload and unchanged route-level auth.
+
+## 2026-03-31 - accepted
+
+Decision:
+Use session-based Supabase reads for page-level auth checks, while keeping `getUser()` for
+authoritative server actions.
+
+Context:
+Dynamic page navigations were still paying a live Supabase Auth network request on each render.
+That created visible navigation latency and occasional auth fetch timeouts on simple hops like room
+to player dashboard.
+
+Consequences:
+
+- Read-only page routes now use cookie-backed session reads instead of live auth validation.
+- Server actions still perform authoritative auth checks before mutating game state.
+- Navigation between protected pages is less dependent on Supabase Auth round-trip latency.
+
+## 2026-03-31 - accepted
+
+Decision:
+Keep `Event 1` as a real intermediate game stage, and preserve seat-level goal state when a player
+is removed or reassigned during setup.
+
+Context:
+The host flow explicitly models `Act 1 -> Event 1 -> Act 2`, so event triggering should not skip
+past the event stage. Separately, seats are the runtime containers for character state; removing a
+player from a seat during setup should clear the human assignment, not destroy the character seat's
+goal structure.
+
+Consequences:
+
+- Triggering the event now moves the game into `EVENT_1`, and `Start Act 2` remains a meaningful
+  host control.
+- Setup-time player removal keeps the seat's role-based goal state intact for the next assignee.
+- Joined-player reassignment is treated as moving humans between existing character seats rather
+  than recreating the seats themselves.
+
+## 2026-03-31 - accepted
+
+Decision:
+Use `/host` as the host game index and scope runtime views under `/g/[gameId]/...`, with
+`/g/[gameId]/host`, `/g/[gameId]/player`, and `/g/[gameId]/room/[code]` as the primary in-app
+routes.
+
+Context:
+Inferring a single “current host game” made the prototype confusing once resets, recreated games,
+and multiple test runs existed. The game itself is the primary object, so host/player/room views
+should be explicit projections of one selected game rather than global surfaces guessing context.
+
+Consequences:
+
+- `/host` now lists the signed-in host's games and launches a specific game control room.
+- Internal app navigation uses stable `gameId`-scoped routes, while `/join/[code]` remains the
+  public player entry point.
+- Legacy `/player` and `/room/[code]` routes can act as convenience redirects, but the scoped `/g`
+  routes are the source of truth moving forward.
+
+## 2026-03-31 - accepted
+
+Decision:
+Use host-only character inspection for solo/dev testing instead of fake demo users or demo-seat
+autofill.
+
+Context:
+Once the host could open player views directly, the demo-user layer no longer added meaningful MVP
+value. It made the seat/character model harder to understand and leaked `Open Seat` / `Demo`
+states into the character switcher.
+
+Consequences:
+
+- Demo user generation and autofill controls are removed.
+- Host character switching now relies on the existing game seats rather than fake users.
+- The character switcher only shows real character entries in slot order, which keeps the testing
+  surface closer to the actual game model.
+
+## 2026-03-31 - accepted
+
+Decision:
+Treat host-controlled character play as a normal game capability, not a development-only override.
+Allow the host to open and operate unclaimed or claimed character seats directly when covering
+NPCs, no-shows, or operational assistance.
+
+Context:
+The prototype originally framed host seat switching as a solo-testing tool. In practice, live games
+may also need the host to pre-stage unclaimed roles, temporarily cover missing players, or step
+into a character to perform operational fixes without requiring a separate email/account.
+
+Consequences:
+
+- Host character control is now gated only by game ownership, not by environment.
+- Act 1 can begin even if some seats are still unclaimed by authenticated players.
+
+## 2026-03-31 - accepted
+
+Decision:
+Instantiate seats with characters at game creation, and treat player assignment as attaching a
+user or reserved email to an existing character seat rather than assigning roles into blank seats.
+
+Context:
+The product model is now explicit: `User` is the human account, `Character` is the authored
+scenario identity, and `Seat` is the game-instance runtime container. The old flow still implied
+that seats began blank and were later given roles, which no longer matches the intended host
+experience or future multi-act seat evolution.
+
+Consequences:
+
+- Every created game now starts with one seat per scenario character, already linked to that
+  character.
+- Open means "no user attached yet," not "no character assigned yet."
+- Host setup is centered on assigning player emails or joined players to character seats.
+- The current MVP still uses a direct `seat -> user` and `seat -> character` model; staged
+  seat-to-character reassignment across acts remains deferred.
+
+## 2026-03-31 - accepted
+
+Decision:
+Render the host character roster as a mobile-first stack of compact character cards rather than a
+table-style operator grid.
+
+Context:
+The host roster is part of a mostly mobile game flow. Table-like rows and wide multi-column layouts
+made the roster hard to scan on smaller screens and created bloated, awkward horizontal control
+regions.
+
+Consequences:
+
+- The host roster now prioritizes narrow, vertically efficient character cards with constrained
+  content width.
+- Secondary controls such as email reservation only appear when relevant for an open seat.
+- Desktop can still read cleanly, but mobile card composition is now the source of truth.

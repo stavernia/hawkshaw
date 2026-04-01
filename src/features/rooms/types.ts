@@ -4,5 +4,5 @@ export type RoomSummary = {
   id: EntityId;
   name: string;
   qrCodeSlug: string;
+  description?: string;
 };
-

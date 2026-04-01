@@ -1,0 +1,120 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Button } from "@/src/components/ui/button";
+import { getCurrentSessionUser } from "@/src/lib/auth/session";
+import { SITE_ROUTES } from "@/src/config/routes";
+import { eavesdropAction, searchRoomAction } from "@/src/server/actions/prototype";
+import { getRoomViewForUser } from "@/src/server/services/prototype";
+
+export const dynamic = "force-dynamic";
+
+export default async function ScopedRoomEntryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ gameId: string; code: string }>;
+  searchParams: Promise<{ as?: string }>;
+}) {
+  const { gameId, code } = await params;
+  const { as } = await searchParams;
+  const user = await getCurrentSessionUser();
+
+  if (!user) {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-6 py-12 md:px-10">
+        <Card className="app-surface w-full border-white/70">
+          <CardHeader>
+            <CardTitle className="font-[family-name:var(--font-heading)] text-4xl">Sign In To Use Room Actions</CardTitle>
+            <CardDescription className="text-base leading-7">
+              Room actions are tied to your authenticated player seat. Sign in, then reopen this room link.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              className="font-medium text-primary"
+              href={`${SITE_ROUTES.login}?next=${encodeURIComponent(SITE_ROUTES.gameRoom(gameId, code))}`}
+            >
+              Go to login
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const roomView = await getRoomViewForUser(user.id, gameId, code, as);
+
+  if (!roomView) {
+    notFound();
+  }
+
+  const { participant, roomState, stage, recentLogs } = roomView;
+
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-6 py-12 md:px-10">
+      <section className="grid w-full gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <Card className="app-surface border-white/70">
+          <CardHeader className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Room Route</p>
+              <CardTitle className="font-[family-name:var(--font-heading)] text-5xl leading-none">
+                {roomState.scenarioRoom.name}
+              </CardTitle>
+            </div>
+            <CardDescription className="max-w-2xl text-base leading-7">{roomState.scenarioRoom.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current Stage</p>
+              <p className="mt-2 font-medium text-foreground">{stage}</p>
+            </div>
+            <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Actions Remaining</p>
+              <p className="mt-2 font-medium text-foreground">{participant.actionsRemaining}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="app-surface border-white/70">
+          <CardHeader>
+            <CardTitle>Room Actions</CardTitle>
+            <CardDescription>Room actions are deterministic and consume one action during active acts.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <form action={searchRoomAction}>
+              <input name="actingParticipantId" type="hidden" value={participant.id} />
+              <input name="gameId" type="hidden" value={gameId} />
+              <input name="roomCode" type="hidden" value={code} />
+              <Button className="w-full justify-center" disabled={!["act-1", "act-2"].includes(stage)} type="submit">
+                Search Room
+              </Button>
+            </form>
+            <form action={eavesdropAction}>
+              <input name="actingParticipantId" type="hidden" value={participant.id} />
+              <input name="gameId" type="hidden" value={gameId} />
+              <input name="roomCode" type="hidden" value={code} />
+              <Button className="w-full justify-center" disabled={!["act-1", "act-2"].includes(stage)} type="submit" variant="outline">
+                Eavesdrop
+              </Button>
+            </form>
+            <Link className="text-sm font-medium text-primary" href={`${SITE_ROUTES.gamePlayer(gameId)}?as=${participant.id}`} prefetch={false}>
+              Back to dashboard
+            </Link>
+            <div className="space-y-2 rounded-2xl border bg-white/80 p-4 text-sm">
+              <p className="font-medium text-foreground">Recent Results</p>
+              {recentLogs.length > 0 ? (
+                recentLogs.map((entry) => (
+                  <div key={entry.id} className="rounded-xl border bg-background/70 p-3">
+                    <p className="font-medium text-foreground">{entry.summary}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No room actions logged here yet.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}

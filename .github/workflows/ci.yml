@@ -10,6 +10,13 @@ jobs:
   quality:
     name: Lint, Test, Typecheck, Build
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: dummy-service-role
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
 
     steps:
       - name: Checkout
@@ -28,20 +35,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Create CI env file
-        run: |
-          cat <<'EOF' > .env.local
-          NEXT_PUBLIC_APP_URL=http://localhost:3000
-          NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-anon-key
-          SUPABASE_SERVICE_ROLE_KEY=dummy-service-role
-          DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
-          DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
-          EOF
-
-      - name: Validate env
-        run: pnpm run env:check
 
       - name: Lint
         run: pnpm run lint

@@ -8,6 +8,65 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum GameStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+}
+
+enum GameStage {
+  SETUP
+  ACT_1
+  EVENT_1
+  ACT_2
+  FINALE
+  RESOLUTION
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+enum ActionType {
+  SEARCH_ROOM
+  EAVESDROP
+  PICKPOCKET
+  TRADE_PROPOSED
+  TRADE_RESPONDED
+  PLANT_ITEM
+  DECISION_SUBMITTED
+  ACCUSATION_SUBMITTED
+  ACT_STARTED
+  EVENT_TRIGGERED
+  FINALE_STARTED
+  RESOLUTION_OPENED
+}
+
+enum ItemType {
+  MONEY
+  WEAPON
+  EVIDENCE
+  KEY_ITEM
+}
+
+enum ClueVisibilitySource {
+  ROLE_INFO
+  GOAL_REWARD
+  ROOM_ACTION
+  EVENT_UPDATE
+  PLAYER_ACTION
+  DECISION_OUTCOME
+}
+
+enum TradeStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELED
+}
+
 model SystemSetting {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -16,3 +75,313 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
 }
 
+model ScenarioDefinition {
+  id                   String           @id @default(cuid())
+  slug                 String           @unique
+  title                String
+  summary              String
+  playerCount          Int              @default(6)
+  actionBudgetPerAct   Int              @default(3)
+  eventTitle           String
+  eventDescription     String
+  revealPayloadJson    Json
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  roles                ScenarioRole[]
+  rooms                ScenarioRoom[]
+  clues                ScenarioClue[]
+  items                ScenarioItem[]
+  goals                ScenarioGoal[]
+  decision             ScenarioDecision?
+  games                Game[]
+}
+
+model ScenarioRole {
+  id                  String             @id @default(cuid())
+  scenarioId          String
+  code                String
+  slotNumber          Int
+  characterName       String
+  characterTitle      String
+  publicDescription   String
+  privateDescription  String
+  actTwoBriefing      String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  scenario            ScenarioDefinition @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  goals               ScenarioGoal[]
+  gameParticipants    GameParticipant[]
+  decisionAssignments ScenarioDecision[]
+
+  @@unique([scenarioId, code])
+  @@unique([scenarioId, slotNumber])
+}
+
+model ScenarioRoom {
+  id                String             @id @default(cuid())
+  scenarioId        String
+  code              String
+  name              String
+  description       String
+  searchResultsJson Json
+  eavesdropJson     Json
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  scenario          ScenarioDefinition @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  gameRoomStates    GameRoomState[]
+
+  @@unique([scenarioId, code])
+}
+
+model ScenarioClue {
+  id              String             @id @default(cuid())
+  scenarioId      String
+  code            String
+  title           String
+  body            String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  scenario        ScenarioDefinition @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  playerClues     PlayerClue[]
+
+  @@unique([scenarioId, code])
+}
+
+model ScenarioItem {
+  id              String             @id @default(cuid())
+  scenarioId      String
+  code            String
+  label           String
+  description     String
+  itemType        ItemType
+  isStealable     Boolean            @default(true)
+  isPlantable     Boolean            @default(true)
+  isTradeable     Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  scenario        ScenarioDefinition @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  playerItems     PlayerItem[]
+  tradeProposals  TradeProposal[]
+
+  @@unique([scenarioId, code])
+}
+
+model ScenarioGoal {
+  id                 String             @id @default(cuid())
+  scenarioId         String
+  roleId             String
+  code               String
+  stage              GameStage
+  title              String
+  description        String
+  points             Int                @default(1)
+  completionTarget   Int?
+  completionRuleJson Json?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  scenario           ScenarioDefinition @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  role               ScenarioRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  goalStates         PlayerGoalState[]
+
+  @@unique([scenarioId, code])
+}
+
+model ScenarioDecision {
+  id                     String             @id @default(cuid())
+  scenarioId             String             @unique
+  decisionMakerRoleId    String
+  code                   String
+  title                  String
+  description            String
+  optionALabel           String
+  optionBLabel           String
+  outcomeAKey            String
+  outcomeBKey            String
+  outcomeASummary        String
+  outcomeBSummary        String
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  scenario               ScenarioDefinition @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  decisionMakerRole      ScenarioRole       @relation(fields: [decisionMakerRoleId], references: [id], onDelete: Cascade)
+}
+
+model Game {
+  id                 String             @id @default(cuid())
+  scenarioId         String
+  code               String             @unique
+  title              String
+  status             GameStatus         @default(DRAFT)
+  stage              GameStage          @default(SETUP)
+  decisionOutcomeKey String?
+  eventOneTriggeredAt DateTime?
+  finaleStartedAt    DateTime?
+  resolvedAt         DateTime?
+  createdByUserId    String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  scenario           ScenarioDefinition @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  participants       GameParticipant[]
+  roomStates         GameRoomState[]
+  accusations        Accusation[]
+  tradeProposals     TradeProposal[]
+  actionLogs         ActionLog[]
+  playerKnowledge    PlayerKnowledge[]
+
+  @@index([status, stage])
+}
+
+model GameParticipant {
+  id                   String             @id @default(cuid())
+  gameId               String
+  scenarioRoleId       String
+  userId               String?            @db.Uuid
+  displayName          String
+  assignedEmail        String?
+  joinedAt             DateTime           @default(now())
+  assignedAt           DateTime?
+  actionsRemaining     Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  game                 Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  scenarioRole         ScenarioRole       @relation(fields: [scenarioRoleId], references: [id], onDelete: Cascade)
+  clues                PlayerClue[]
+  items                PlayerItem[]
+  goals                PlayerGoalState[]
+  outgoingTrades       TradeProposal[]    @relation("TradeProposer")
+  incomingTrades       TradeProposal[]    @relation("TradeResponder")
+  accusations          Accusation[]       @relation("AccusingParticipant")
+  accusationTargets    Accusation[]       @relation("SuspectParticipant")
+  actionLogs           ActionLog[]        @relation("ActingParticipant")
+  targetActionLogs     ActionLog[]        @relation("TargetParticipant")
+  knowledgeSeen        PlayerKnowledge[]  @relation("KnowledgeViewer")
+  knowledgeAbout       PlayerKnowledge[]  @relation("KnowledgeSubject")
+
+  @@unique([gameId, userId])
+  @@unique([gameId, scenarioRoleId])
+  @@index([gameId, userId])
+  @@index([gameId, assignedEmail])
+}
+
+model GameRoomState {
+  id               String           @id @default(cuid())
+  gameId           String
+  scenarioRoomId   String
+  searchIndex      Int              @default(0)
+  eavesdropIndex   Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  game             Game             @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  scenarioRoom     ScenarioRoom     @relation(fields: [scenarioRoomId], references: [id], onDelete: Cascade)
+  actionLogs       ActionLog[]
+
+  @@unique([gameId, scenarioRoomId])
+}
+
+model PlayerClue {
+  id                String               @id @default(cuid())
+  participantId     String
+  scenarioClueId    String
+  source            ClueVisibilitySource
+  createdAt         DateTime             @default(now())
+  participant       GameParticipant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  scenarioClue      ScenarioClue         @relation(fields: [scenarioClueId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, scenarioClueId])
+}
+
+model PlayerItem {
+  id                String           @id @default(cuid())
+  participantId     String
+  scenarioItemId    String
+  quantity          Int              @default(1)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  participant       GameParticipant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  scenarioItem      ScenarioItem     @relation(fields: [scenarioItemId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, scenarioItemId])
+}
+
+model PlayerGoalState {
+  id                String           @id @default(cuid())
+  participantId     String
+  scenarioGoalId    String
+  status            GoalStatus       @default(ACTIVE)
+  progress          Int              @default(0)
+  completedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  participant       GameParticipant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  scenarioGoal      ScenarioGoal     @relation(fields: [scenarioGoalId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, scenarioGoalId])
+}
+
+model PlayerKnowledge {
+  id                  String            @id @default(cuid())
+  gameId              String
+  viewerParticipantId String
+  subjectParticipantId String
+  factKey             String
+  title               String
+  body                String
+  createdAt           DateTime          @default(now())
+  game                Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  viewerParticipant   GameParticipant   @relation("KnowledgeViewer", fields: [viewerParticipantId], references: [id], onDelete: Cascade)
+  subjectParticipant  GameParticipant   @relation("KnowledgeSubject", fields: [subjectParticipantId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, viewerParticipantId, subjectParticipantId, factKey])
+  @@index([viewerParticipantId, subjectParticipantId])
+}
+
+model TradeProposal {
+  id                    String            @id @default(cuid())
+  gameId                String
+  proposerParticipantId String
+  responderParticipantId String
+  scenarioItemId        String
+  status                TradeStatus       @default(PENDING)
+  createdAt             DateTime          @default(now())
+  respondedAt           DateTime?
+  game                  Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  proposerParticipant   GameParticipant   @relation("TradeProposer", fields: [proposerParticipantId], references: [id], onDelete: Cascade)
+  responderParticipant  GameParticipant   @relation("TradeResponder", fields: [responderParticipantId], references: [id], onDelete: Cascade)
+  scenarioItem          ScenarioItem      @relation(fields: [scenarioItemId], references: [id], onDelete: Cascade)
+
+  @@index([gameId, status])
+}
+
+model Accusation {
+  id                    String            @id @default(cuid())
+  gameId                String
+  participantId         String
+  suspectParticipantId  String?
+  motive                String
+  means                 String
+  submittedAt           DateTime          @default(now())
+  game                  Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  participant           GameParticipant   @relation("AccusingParticipant", fields: [participantId], references: [id], onDelete: Cascade)
+  suspectParticipant    GameParticipant?  @relation("SuspectParticipant", fields: [suspectParticipantId], references: [id], onDelete: SetNull)
+
+  @@unique([gameId, participantId])
+}
+
+model ActionLog {
+  id                   String            @id @default(cuid())
+  gameId               String
+  participantId        String?
+  targetParticipantId  String?
+  roomStateId          String?
+  actionType           ActionType
+  stage                GameStage
+  summary              String
+  detailsJson          Json?
+  createdAt            DateTime          @default(now())
+  game                 Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  participant          GameParticipant?  @relation("ActingParticipant", fields: [participantId], references: [id], onDelete: SetNull)
+  targetParticipant    GameParticipant?  @relation("TargetParticipant", fields: [targetParticipantId], references: [id], onDelete: SetNull)
+  roomState            GameRoomState?    @relation(fields: [roomStateId], references: [id], onDelete: SetNull)
+
+  @@index([gameId, createdAt])
+  @@index([participantId, createdAt])
+}

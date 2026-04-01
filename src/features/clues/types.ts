@@ -4,5 +4,6 @@ export type ClueSummary = {
   id: EntityId;
   title: string;
   visibility: Visibility;
+  body?: string;
+  source?: string;
 };
-
