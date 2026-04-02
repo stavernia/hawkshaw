@@ -39,7 +39,7 @@ const { mockTx, mockPrisma } = vi.hoisted(() => {
       update: vi.fn(),
       findMany: vi.fn(),
     },
-    $transaction: vi.fn(async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx)),
+    $transaction: vi.fn(async (callback: (client: unknown) => Promise<unknown>) => callback(tx)),
   } as const;
 
   return { mockTx: tx, mockPrisma: prisma };

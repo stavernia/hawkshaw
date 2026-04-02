@@ -381,3 +381,23 @@ Consequences:
 - Triggering the event only applies event-state updates and clue awards.
 - Starting `Act 2` is the activation point for new action budgets and Act 2 goal state.
 - Decision timing remains intentionally underbuilt for now and is not stage-gated in this pass.
+
+## 2026-04-02 - accepted
+
+Decision:
+Use a mood-first teaser landing page for Hawkshaw, centered on the logo, minimal copy, and a dark
+flashlight-reveal interaction rather than a scaffold/product explainer homepage.
+
+Context:
+The previous homepage described the scaffold and route shells clearly, but it did not establish the
+tone of Hawkshaw as a live social mystery experience. The public landing page should create
+intrigue first and leave detailed product explanation to later marketing material and the signed-in
+app surfaces.
+
+Consequences:
+
+- The homepage now prioritizes atmosphere, brand, and a handful of teaser fragments over feature
+  sections and route links.
+- Desktop uses a pointer-driven flashlight reveal, while mobile falls back to an ambient central
+  spotlight.
+- The public landing page intentionally minimizes product detail in favor of mystery and tone.
