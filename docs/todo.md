@@ -8,6 +8,9 @@
 - improve room QR generation and printable host assets
 - add richer scoring, finale presentation, and post-game recap views
 - evaluate whether realtime updates are worth adding before live playtests
+- define decision windows by scenario/stage instead of the current intentionally flexible prototype behavior
+- replace the current stage-bucket goal lifecycle with richer act-bound activation and resolution rules
+- design future staged seat-to-character reassignment for multi-act role changes
 
 ## Open Questions For Later
 

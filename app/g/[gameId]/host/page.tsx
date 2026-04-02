@@ -124,43 +124,51 @@ export default async function GameHostPage({
           <CardHeader>
             <CardTitle>Character Roster</CardTitle>
             <CardDescription>
-              Characters are instantiated onto seats at game creation. Assign a player email ahead of time, or move a joined player onto the right character during setup.
+              Assign players to characters from a compact roster. Reservation stays secondary and only appears when a seat is still open.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+            <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
               {hostGame.participants.map((participant) => (
-                <div key={participant.id} className="rounded-2xl border bg-white/80 px-4 py-4 sm:px-5">
+                <article key={participant.id} className="rounded-2xl border bg-white/85 px-4 py-4 shadow-sm sm:px-5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{participant.seatLabel}</p>
                         <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground">
-                          {participant.seatStatus}
+                          {participant.hasUser ? "Claimed" : participant.assignedEmail ? "Reserved" : "Open"}
                         </span>
                         <span className="rounded-full border border-input bg-background/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground">
-                          {participant.controlState === "host-or-player" ? "Host + Player" : "Host"}
+                          {participant.controlState === "host-or-player" ? "Host + Player" : "Host Control"}
                         </span>
                       </div>
-                      <p className="mt-2 text-2xl font-medium leading-none text-foreground">{participant.characterName}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {participant.characterTitle} · {participant.actionsRemaining} actions remaining
-                      </p>
+                      <div>
+                        <p className="text-2xl font-medium leading-none text-foreground">{participant.characterName}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {participant.characterTitle} · {participant.actionsRemaining} actions remaining
+                        </p>
+                      </div>
                     </div>
+                    <Link
+                      className="shrink-0 text-sm font-medium text-primary"
+                      href={`${SITE_ROUTES.gamePlayer(hostGame.game.id)}?as=${participant.id}`}
+                    >
+                      View Character
+                    </Link>
                   </div>
 
-                  <div className="mt-3 border-t pt-3">
+                  <div className="mt-3 rounded-xl bg-background/60 px-3 py-2.5 text-sm">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Assigned Player</p>
                     <p className="mt-1 truncate font-medium text-foreground">{participant.playerLabel}</p>
-                    <p className="truncate text-sm text-muted-foreground">{participant.assignedEmail ?? "No email reserved"}</p>
+                    <p className="truncate text-muted-foreground">{participant.assignedEmail ?? "No email reserved"}</p>
                   </div>
 
-                  <div className="mt-3 grid gap-2">
-                    <form action={assignSeatPlayerAction} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <form action={assignSeatPlayerAction} className="mt-3 flex items-center gap-2">
                       <input name="gameId" type="hidden" value={hostGame.game.id} />
+                      <input name="mode" type="hidden" value="move-player" />
                       <input name="participantId" type="hidden" value={participant.id} />
                       <select
-                        className="h-10 w-full rounded-xl border border-input bg-background/70 px-3 py-2 text-sm"
+                        className="h-10 min-w-0 flex-1 rounded-xl border border-input bg-background/70 px-3 py-2 text-sm"
                         defaultValue={participant.hasUser ? participant.id : ""}
                         disabled={hostGame.game.currentStage !== "setup"}
                         name="sourceParticipantId"
@@ -175,15 +183,20 @@ export default async function GameHostPage({
                       <Button disabled={hostGame.game.currentStage !== "setup"} size="sm" type="submit" variant="outline">
                         Save
                       </Button>
-                    </form>
+                  </form>
 
-                    {!participant.hasUser ? (
-                      <form action={assignSeatPlayerAction} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  {!participant.hasUser ? (
+                    <details className="mt-2 rounded-xl border bg-background/50 px-3 py-2">
+                      <summary className="cursor-pointer list-none text-sm font-medium text-foreground marker:hidden">
+                        {participant.assignedEmail ? "Edit reservation" : "Reserve by email"}
+                      </summary>
+                      <form action={assignSeatPlayerAction} className="mt-3 flex items-center gap-2">
                         <input name="gameId" type="hidden" value={hostGame.game.id} />
+                        <input name="mode" type="hidden" value="reserve-email" />
                         <input name="participantId" type="hidden" value={participant.id} />
                         <input name="sourceParticipantId" type="hidden" value="" />
                         <input
-                          className="h-10 w-full rounded-xl border border-input bg-background/70 px-3 py-2 text-sm"
+                          className="h-10 min-w-0 flex-1 rounded-xl border border-input bg-white px-3 py-2 text-sm"
                           defaultValue={participant.assignedEmail ?? ""}
                           disabled={hostGame.game.currentStage !== "setup"}
                           name="assignedEmail"
@@ -194,13 +207,10 @@ export default async function GameHostPage({
                           Save
                         </Button>
                       </form>
-                    ) : null}
-                  </div>
+                    </details>
+                  ) : null}
 
-                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3 text-sm">
-                    <Link className="font-medium text-primary" href={`${SITE_ROUTES.gamePlayer(hostGame.game.id)}?as=${participant.id}`}>
-                      View Character
-                    </Link>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                     {participant.hasUser ? (
                       <form action={removeParticipantFromSeatAction}>
                         <input name="gameId" type="hidden" value={hostGame.game.id} />
@@ -212,6 +222,7 @@ export default async function GameHostPage({
                     ) : participant.assignedEmail ? (
                       <form action={assignSeatPlayerAction}>
                         <input name="gameId" type="hidden" value={hostGame.game.id} />
+                        <input name="mode" type="hidden" value="clear-reservation" />
                         <input name="participantId" type="hidden" value={participant.id} />
                         <input name="sourceParticipantId" type="hidden" value="" />
                         <input name="assignedEmail" type="hidden" value="" />
@@ -221,7 +232,7 @@ export default async function GameHostPage({
                       </form>
                     ) : null}
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           </CardContent>

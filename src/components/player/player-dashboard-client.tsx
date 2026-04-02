@@ -48,6 +48,10 @@ function stageLabel(stage: string) {
   }
 }
 
+function canUseAppActions(stage: string) {
+  return stage === "act-1" || stage === "act-2";
+}
+
 export function PlayerDashboardClient({
   dashboard,
   currentTab,
@@ -61,6 +65,7 @@ export function PlayerDashboardClient({
   const controlledDashboards = [dashboard, ...(dashboard.controlledDashboards ?? [])];
   const currentDashboard =
     controlledDashboards.find((entry) => entry.participant.id === activeDashboardId) ?? dashboard;
+  const canUseActions = canUseAppActions(currentDashboard.stage);
 
   useEffect(() => {
     setActiveDashboardId(dashboard.participant.id);
@@ -325,7 +330,11 @@ export function PlayerDashboardClient({
           <Card className="app-surface border-white/70">
             <CardHeader>
               <CardTitle>Actions</CardTitle>
-              <CardDescription>Choose the action first, then choose the target.</CardDescription>
+              <CardDescription>
+                {canUseActions
+                  ? "Choose the action first, then choose the target."
+                  : "App actions pause during Event 1. Read updates and wait for the next active act."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <form action={pickpocketAction} className="grid gap-3 rounded-2xl border bg-white/80 p-4">
@@ -337,6 +346,7 @@ export function PlayerDashboardClient({
                   className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
                   id="pickpocket-target"
                   name="targetParticipantId"
+                  disabled={!canUseActions}
                 >
                   {currentDashboard.players.map((player) => (
                     <option key={player.id} value={player.id}>
@@ -344,7 +354,7 @@ export function PlayerDashboardClient({
                     </option>
                   ))}
                 </select>
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="outline" disabled={!canUseActions}>
                   Resolve Pickpocket
                 </Button>
               </form>
@@ -358,6 +368,7 @@ export function PlayerDashboardClient({
                   className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
                   id="trade-item"
                   name="playerItemId"
+                  disabled={!canUseActions}
                 >
                   {currentDashboard.items.map((item) => (
                     <option key={item.id} value={item.id}>
@@ -370,6 +381,7 @@ export function PlayerDashboardClient({
                   className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
                   id="trade-target"
                   name="targetParticipantId"
+                  disabled={!canUseActions}
                 >
                   {currentDashboard.players.map((player) => (
                     <option key={player.id} value={player.id}>
@@ -377,7 +389,7 @@ export function PlayerDashboardClient({
                     </option>
                   ))}
                 </select>
-                <Button type="submit">Send Trade</Button>
+                <Button type="submit" disabled={!canUseActions}>Send Trade</Button>
               </form>
 
               <form action={plantItemAction} className="grid gap-3 rounded-2xl border bg-white/80 p-4">
@@ -389,6 +401,7 @@ export function PlayerDashboardClient({
                   className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
                   id="plant-item"
                   name="playerItemId"
+                  disabled={!canUseActions}
                 >
                   {currentDashboard.items.map((item) => (
                     <option key={item.id} value={item.id}>
@@ -401,6 +414,7 @@ export function PlayerDashboardClient({
                   className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
                   id="plant-target"
                   name="targetParticipantId"
+                  disabled={!canUseActions}
                 >
                   {currentDashboard.players.map((player) => (
                     <option key={player.id} value={player.id}>
@@ -408,7 +422,7 @@ export function PlayerDashboardClient({
                     </option>
                   ))}
                 </select>
-                <Button className="mt-3" type="submit" variant="ghost">
+                <Button className="mt-3" type="submit" variant="ghost" disabled={!canUseActions}>
                   Resolve Plant Item
                 </Button>
               </form>
@@ -421,18 +435,27 @@ export function PlayerDashboardClient({
         <Card className="app-surface border-white/70">
           <CardHeader>
             <CardTitle>Rooms</CardTitle>
-            <CardDescription>Use room links directly in the prototype. QR codes can point here later.</CardDescription>
+            <CardDescription>
+              {canUseActions
+                ? "Use room links directly in the prototype. QR codes can point here later."
+                : "Room routes stay visible during Event 1, but interaction resumes when Act 2 begins."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {currentDashboard.rooms.map((room) => (
-              <Link
+              <div
                 key={room.id}
-                className="rounded-2xl border bg-white/80 p-4 text-sm transition hover:border-primary/60"
-                href={room.href}
+                className="rounded-2xl border bg-white/80 p-4 text-sm"
               >
                 <p className="font-medium text-foreground">{room.name}</p>
-                <p className="mt-2 text-primary">Open room actions</p>
-              </Link>
+                {canUseActions ? (
+                  <Link className="mt-2 block text-primary" href={room.href}>
+                    Open room actions
+                  </Link>
+                ) : (
+                  <p className="mt-2 text-muted-foreground">Room actions resume in Act 2.</p>
+                )}
+              </div>
             ))}
           </CardContent>
         </Card>

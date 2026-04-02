@@ -62,6 +62,7 @@ export async function assignSeatPlayerAction(formData: FormData) {
   const user = await requireCurrentUser(SITE_ROUTES.hostHome);
   const gameId = getString(formData, "gameId");
   await assignPlayerToSeat(getString(formData, "participantId"), user.id, {
+    mode: (getString(formData, "mode") || undefined) as "move-player" | "reserve-email" | "clear-reservation" | undefined,
     sourceParticipantId: getString(formData, "sourceParticipantId") || undefined,
     assignedEmail: getString(formData, "assignedEmail") || undefined,
   });

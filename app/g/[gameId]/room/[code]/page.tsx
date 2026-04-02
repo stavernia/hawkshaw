@@ -9,6 +9,10 @@ import { getRoomViewForUser } from "@/src/server/services/prototype";
 
 export const dynamic = "force-dynamic";
 
+function stageLabel(stage: string) {
+  return stage.replace("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default async function ScopedRoomEntryPage({
   params,
   searchParams,
@@ -67,7 +71,7 @@ export default async function ScopedRoomEntryPage({
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current Stage</p>
-              <p className="mt-2 font-medium text-foreground">{stage}</p>
+              <p className="mt-2 font-medium text-foreground">{stageLabel(stage)}</p>
             </div>
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Actions Remaining</p>
@@ -78,7 +82,11 @@ export default async function ScopedRoomEntryPage({
         <Card className="app-surface border-white/70">
           <CardHeader>
             <CardTitle>Room Actions</CardTitle>
-            <CardDescription>Room actions are deterministic and consume one action during active acts.</CardDescription>
+            <CardDescription>
+              {["act-1", "act-2"].includes(stage)
+                ? "Room actions are deterministic and consume one action during active acts."
+                : "Room actions pause during Event 1 and resume with the next active act."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <form action={searchRoomAction}>
@@ -98,7 +106,7 @@ export default async function ScopedRoomEntryPage({
               </Button>
             </form>
             <Link className="text-sm font-medium text-primary" href={`${SITE_ROUTES.gamePlayer(gameId)}?as=${participant.id}`} prefetch={false}>
-              Back to dashboard
+              Back to character dashboard
             </Link>
             <div className="space-y-2 rounded-2xl border bg-white/80 p-4 text-sm">
               <p className="font-medium text-foreground">Recent Results</p>

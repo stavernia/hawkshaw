@@ -363,3 +363,21 @@ Consequences:
   content width.
 - Secondary controls such as email reservation only appear when relevant for an open seat.
 - Desktop can still read cleanly, but mobile card composition is now the source of truth.
+
+## 2026-04-01 - accepted
+
+Decision:
+Treat `Event 1` as a true pause state for app-driven interaction. New actions and Act 2 goals only
+become available when the host explicitly starts `Act 2`.
+
+Context:
+The product flow now distinguishes `Act 1`, `Event 1`, and `Act 2` as separate beats. If the app
+refreshes actions or activates Act 2 goals during `Event 1`, the host control flow becomes
+cosmetic and players can continue acting through what should be a narrative pause.
+
+Consequences:
+
+- Room and player-target actions are blocked during `Event 1`.
+- Triggering the event only applies event-state updates and clue awards.
+- Starting `Act 2` is the activation point for new action budgets and Act 2 goal state.
+- Decision timing remains intentionally underbuilt for now and is not stage-gated in this pass.

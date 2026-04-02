@@ -11,12 +11,17 @@ import { SITE_ROUTES } from "@/src/config/routes";
 import { prisma } from "@/src/lib/prisma";
 import { PROTOTYPE_SCENARIO, type PrototypeRoomResult } from "@/src/features/prototype/definition";
 import {
+  canUseLiveActions,
   computeRevealScore,
+  deriveSeatSwap,
   evaluateGoalRule,
+  getActTwoGoalStatus,
+  getSetupGoalStatus,
   mapActionTypeToLabel,
   mapGameStageToKey,
   mapGameStatusToKey,
   mapGoalStatusToKey,
+  pickJoinableSeat,
   selectNextRoomResult,
 } from "@/src/features/prototype/logic";
 import type { HostGameDetail, HostGameListItem, ScenarioSummary } from "@/src/features/games/types";
@@ -395,7 +400,7 @@ async function resetSeatGoalsForSetup(
     data: goals.map((goal) => ({
       participantId: input.participantId,
       scenarioGoalId: goal.id,
-      status: goal.stage === GAME_STAGE.ACT_1 ? GOAL_STATUS.ACTIVE : GOAL_STATUS.FAILED,
+      status: getSetupGoalStatus(goal.stage),
     })),
   });
 }
@@ -493,6 +498,12 @@ async function consumeAction(tx: Prisma.TransactionClient, participantId: string
     where: { id: participantId },
     data: { actionsRemaining: participant.actionsRemaining - 1 },
   });
+}
+
+function assertLiveActionStage(stage: GameStage) {
+  if (!canUseLiveActions(mapGameStageToKey(stage))) {
+    throw new Error("App actions are paused until the next active act begins.");
+  }
 }
 
 async function createLog(
@@ -715,7 +726,7 @@ export async function createPrototypeGame(createdByUserId?: string | null) {
           data: goals.map((goal) => ({
             participantId: participant.id,
             scenarioGoalId: goal.id,
-            status: goal.stage === GAME_STAGE.ACT_1 ? GOAL_STATUS.ACTIVE : GOAL_STATUS.FAILED,
+            status: getSetupGoalStatus(goal.stage),
           })),
         });
       }
@@ -843,15 +854,13 @@ export async function joinGameWithUser(
   }
 
   const normalizedEmail = normalizeEmail(user.email);
-  const reservedSeat = normalizedEmail
-    ? game.participants.find(
-        (participant) => !participant.userId && normalizeEmail((participant as { assignedEmail?: string | null }).assignedEmail) === normalizedEmail,
-      )
-    : undefined;
-
-  const openSeat =
-    reservedSeat ??
-    game.participants.find((participant) => !participant.userId && !(participant as { assignedEmail?: string | null }).assignedEmail);
+  const openSeat = pickJoinableSeat(
+    game.participants.map((participant) => ({
+      ...participant,
+      assignedEmail: normalizeEmail(participant.assignedEmail),
+    })),
+    normalizedEmail,
+  );
 
   if (!openSeat) {
     throw new Error("This game is already full.");
@@ -873,7 +882,7 @@ export async function removeParticipantFromSeat(participantId: string, createdBy
     const participant = await requireOwnedParticipantGame(tx, participantId, createdByUserId);
 
     if (participant.game.stage !== GAME_STAGE.SETUP) {
-      throw new Error("Players can only be removed before Phase 1 starts.");
+      throw new Error("Players can only be removed before Act 1 starts.");
     }
 
     await tx.playerGoalState.deleteMany({
@@ -1035,7 +1044,7 @@ export async function resetGameToPregame(gameId: string, createdByUserId: string
             data: goals.map((goal) => ({
               participantId: participant.id,
               scenarioGoalId: goal.id,
-              status: goal.stage === GAME_STAGE.ACT_1 ? GOAL_STATUS.ACTIVE : GOAL_STATUS.FAILED,
+              status: getSetupGoalStatus(goal.stage),
             })),
           });
         }
@@ -1116,8 +1125,16 @@ async function buildPlayerDashboardView(input: {
         OR: [{ responderParticipantId: participant.id }, { proposerParticipantId: participant.id }],
       },
       include: {
-        proposerParticipant: true,
-        responderParticipant: true,
+        proposerParticipant: {
+          include: {
+            scenarioRole: true,
+          },
+        },
+        responderParticipant: {
+          include: {
+            scenarioRole: true,
+          },
+        },
         scenarioItem: true,
       },
       orderBy: {
@@ -1254,16 +1271,16 @@ async function buildPlayerDashboardView(input: {
     })),
     pendingIncomingTrades: pendingIncomingTrades.map((trade) => ({
       id: trade.id,
-      proposerName: trade.proposerParticipant.displayName,
-      responderName: trade.responderParticipant.displayName,
+      proposerName: trade.proposerParticipant.scenarioRole?.characterName ?? playerLabelFromSeat(trade.proposerParticipant),
+      responderName: trade.responderParticipant.scenarioRole?.characterName ?? playerLabelFromSeat(trade.responderParticipant),
       itemLabel: trade.scenarioItem.label,
       status: trade.status.toLowerCase() as "pending",
       createdAt: trade.createdAt.toISOString(),
     })),
     pendingOutgoingTrades: pendingOutgoingTrades.map((trade) => ({
       id: trade.id,
-      proposerName: trade.proposerParticipant.displayName,
-      responderName: trade.responderParticipant.displayName,
+      proposerName: trade.proposerParticipant.scenarioRole?.characterName ?? playerLabelFromSeat(trade.proposerParticipant),
+      responderName: trade.responderParticipant.scenarioRole?.characterName ?? playerLabelFromSeat(trade.responderParticipant),
       itemLabel: trade.scenarioItem.label,
       status: trade.status.toLowerCase() as "pending" | "accepted" | "rejected" | "canceled",
       createdAt: trade.createdAt.toISOString(),
@@ -1419,6 +1436,7 @@ export async function assignPlayerToSeat(
   participantId: string,
   createdByUserId: string,
   input: {
+    mode?: "move-player" | "reserve-email" | "clear-reservation";
     sourceParticipantId?: string;
     assignedEmail?: string;
   },
@@ -1432,8 +1450,13 @@ export async function assignPlayerToSeat(
 
     const normalizedAssignedEmail = normalizeEmail(input.assignedEmail);
     const sourceParticipantId = input.sourceParticipantId?.trim() || undefined;
+    const mode = input.mode ?? "move-player";
 
-    if (sourceParticipantId) {
+    if (mode === "move-player") {
+      if (!sourceParticipantId) {
+        return;
+      }
+
       const source = await tx.gameParticipant.findUniqueOrThrow({
         where: { id: sourceParticipantId },
       });
@@ -1456,58 +1479,56 @@ export async function assignPlayerToSeat(
         return;
       }
 
-      const targetSeatState = {
-        userId: target.userId,
-        displayName: target.displayName,
-        assignedEmail: target.assignedEmail,
-        joinedAt: target.joinedAt,
-      };
-
-      await tx.gameParticipant.update({
-        where: { id: target.id },
-        data: {
-          userId: null,
+      const swappedSeats = deriveSeatSwap(
+        {
+          userId: target.userId,
+          displayName: target.displayName,
+          assignedEmail: target.assignedEmail,
+          joinedAt: target.joinedAt,
         },
-      });
-
-      await tx.gameParticipant.update({
-        where: { id: source.id },
-        data: {
-          userId: null,
-        },
-      });
-
-      await tx.gameParticipant.update({
-        where: { id: target.id },
-        data: {
+        {
           userId: source.userId,
           displayName: source.displayName,
-          assignedEmail: source.assignedEmail ?? normalizedAssignedEmail,
+          assignedEmail: source.assignedEmail,
           joinedAt: source.joinedAt,
+        },
+        normalizedAssignedEmail,
+      );
+
+      await tx.gameParticipant.update({
+        where: { id: target.id },
+        data: {
+          userId: null,
         },
       });
 
       await tx.gameParticipant.update({
         where: { id: source.id },
-        data: targetSeatState.userId
-          ? {
-              userId: targetSeatState.userId,
-              displayName: targetSeatState.displayName,
-              assignedEmail: targetSeatState.assignedEmail,
-              joinedAt: targetSeatState.joinedAt,
-            }
-          : {
-              userId: null,
-              displayName: "Open",
-              assignedEmail: null,
-              joinedAt: new Date(),
-            },
+        data: {
+          userId: null,
+        },
+      });
+
+      await tx.gameParticipant.update({
+        where: { id: target.id },
+        data: {
+          ...swappedSeats.target,
+        },
+      });
+
+      await tx.gameParticipant.update({
+        where: { id: source.id },
+        data: swappedSeats.source,
       });
 
       return;
     }
 
-    if (normalizedAssignedEmail) {
+    if (mode === "reserve-email") {
+      if (!normalizedAssignedEmail) {
+        return;
+      }
+
       const existingEmailSeat = await tx.gameParticipant.findFirst({
         where: {
           gameId: target.gameId,
@@ -1533,15 +1554,14 @@ export async function assignPlayerToSeat(
       return;
     }
 
-    await tx.gameParticipant.update({
-      where: { id: target.id },
-      data: {
-        userId: null,
-        displayName: "Open",
-        assignedEmail: null,
-        joinedAt: new Date(),
-      },
-    });
+    if (mode === "clear-reservation" && !target.userId) {
+      await tx.gameParticipant.update({
+        where: { id: target.id },
+        data: {
+          assignedEmail: null,
+        },
+      });
+    }
   });
 }
 
@@ -1649,7 +1669,7 @@ export async function startPhaseOne(gameId: string, createdByUserId: string) {
         await tx.playerGoalState.update({
           where: { id: goal.id },
           data: {
-            status: goal.scenarioGoal.stage === GAME_STAGE.ACT_1 ? GOAL_STATUS.ACTIVE : GOAL_STATUS.FAILED,
+            status: getSetupGoalStatus(goal.scenarioGoal.stage),
           },
         });
       }
@@ -1659,7 +1679,7 @@ export async function startPhaseOne(gameId: string, createdByUserId: string) {
       gameId,
       actionType: ACTION_TYPE.ACT_STARTED,
        stage: GAME_STAGE.ACT_1,
-      summary: "Phase 1 has started.",
+      summary: "Act 1 has started.",
     });
   }, { timeout: 20000, maxWait: 10000 });
 
@@ -1770,12 +1790,7 @@ export async function startActTwo(gameId: string, createdByUserId: string) {
         await tx.playerGoalState.update({
           where: { id: goal.id },
           data: {
-            status:
-              goal.scenarioGoal.stage === GAME_STAGE.ACT_2
-                ? GOAL_STATUS.ACTIVE
-                : goal.status === GOAL_STATUS.COMPLETED
-                  ? GOAL_STATUS.COMPLETED
-                  : GOAL_STATUS.FAILED,
+            status: getActTwoGoalStatus(goal.scenarioGoal.stage, goal.status),
           },
         });
       }
@@ -2010,8 +2025,8 @@ async function resolveRoomAction(
 
   const stage = mapGameStageToKey(participant.game.stage);
 
-  if (!["act-1", "act-2"].includes(stage)) {
-    throw new Error("Room actions are only available during active phases.");
+  if (!canUseLiveActions(stage)) {
+    throw new Error("Room actions are paused until the next active act begins.");
   }
 
   const payload =
@@ -2100,6 +2115,8 @@ export async function pickpocket(userId: string, targetParticipantId: string, ac
     throw new Error("No active participant found.");
   }
 
+  assertLiveActionStage(participant.game.stage);
+
   const target = await prisma.gameParticipant.findFirstOrThrow({
     where: {
       id: targetParticipantId,
@@ -2149,6 +2166,8 @@ export async function proposeTrade(
     throw new Error("No active participant found.");
   }
 
+  assertLiveActionStage(participant.game.stage);
+
   const playerItem = participant.items.find((item) => item.id === playerItemId);
   if (!playerItem || !playerItem.scenarioItem.isTradeable) {
     throw new Error("Item cannot be traded.");
@@ -2188,6 +2207,8 @@ export async function respondToTrade(
   if (!participant) {
     throw new Error("No active participant found.");
   }
+
+  assertLiveActionStage(participant.game.stage);
 
   const trade = await prisma.tradeProposal.findUniqueOrThrow({
     where: { id: tradeId },
@@ -2243,6 +2264,8 @@ export async function plantItem(
   if (!participant) {
     throw new Error("No active participant found.");
   }
+
+  assertLiveActionStage(participant.game.stage);
 
   const playerItem = participant.items.find((item) => item.id === playerItemId);
 

@@ -2,6 +2,13 @@ import type { ActionType, GameStage, GameStatus, GoalStatus } from "@prisma/clie
 import type { StageKey } from "@/src/domain/core";
 import type { PrototypeGoalRule, PrototypeRoomResult } from "@/src/features/prototype/definition";
 
+export type SeatOccupant = {
+  userId: string | null;
+  displayName: string;
+  assignedEmail: string | null;
+  joinedAt: Date;
+};
+
 export function mapGameStageToKey(stage: GameStage | string | null | undefined): StageKey {
   switch (stage) {
     case "SETUP":
@@ -74,6 +81,67 @@ export function mapActionTypeToLabel(actionType: ActionType): string {
     case "RESOLUTION_OPENED":
       return "Resolution";
   }
+}
+
+export function canUseLiveActions(stage: StageKey) {
+  return stage === "act-1" || stage === "act-2";
+}
+
+export function getSetupGoalStatus(goalStage: GameStage): GoalStatus {
+  return goalStage === "ACT_1" ? "ACTIVE" : "FAILED";
+}
+
+export function getActTwoGoalStatus(goalStage: GameStage, currentStatus: GoalStatus): GoalStatus {
+  if (goalStage === "ACT_2") {
+    return "ACTIVE";
+  }
+
+  return currentStatus === "COMPLETED" ? "COMPLETED" : "FAILED";
+}
+
+export function pickJoinableSeat<T extends { userId: string | null; assignedEmail: string | null }>(
+  seats: T[],
+  normalizedEmail?: string | null,
+) {
+  if (normalizedEmail) {
+    const reservedSeat = seats.find(
+      (seat) => !seat.userId && seat.assignedEmail?.trim().toLowerCase() === normalizedEmail,
+    );
+
+    if (reservedSeat) {
+      return reservedSeat;
+    }
+  }
+
+  return seats.find((seat) => !seat.userId && !seat.assignedEmail) ?? null;
+}
+
+export function deriveSeatSwap(
+  target: SeatOccupant,
+  source: SeatOccupant,
+  fallbackAssignedEmail?: string | null,
+) {
+  return {
+    target: {
+      userId: source.userId,
+      displayName: source.displayName,
+      assignedEmail: source.assignedEmail ?? fallbackAssignedEmail ?? null,
+      joinedAt: source.joinedAt,
+    },
+    source: target.userId
+      ? {
+          userId: target.userId,
+          displayName: target.displayName,
+          assignedEmail: target.assignedEmail,
+          joinedAt: target.joinedAt,
+        }
+      : {
+          userId: null,
+          displayName: "Open",
+          assignedEmail: null,
+          joinedAt: new Date(),
+        },
+  };
 }
 
 export function normalizeFreeText(value: string): string {
