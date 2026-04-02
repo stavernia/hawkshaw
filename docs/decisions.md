@@ -363,3 +363,41 @@ Consequences:
   content width.
 - Secondary controls such as email reservation only appear when relevant for an open seat.
 - Desktop can still read cleanly, but mobile card composition is now the source of truth.
+
+## 2026-04-01 - accepted
+
+Decision:
+Treat `Event 1` as a true pause state for app-driven interaction. New actions and Act 2 goals only
+become available when the host explicitly starts `Act 2`.
+
+Context:
+The product flow now distinguishes `Act 1`, `Event 1`, and `Act 2` as separate beats. If the app
+refreshes actions or activates Act 2 goals during `Event 1`, the host control flow becomes
+cosmetic and players can continue acting through what should be a narrative pause.
+
+Consequences:
+
+- Room and player-target actions are blocked during `Event 1`.
+- Triggering the event only applies event-state updates and clue awards.
+- Starting `Act 2` is the activation point for new action budgets and Act 2 goal state.
+- Decision timing remains intentionally underbuilt for now and is not stage-gated in this pass.
+
+## 2026-04-02 - accepted
+
+Decision:
+Use a mood-first teaser landing page for Hawkshaw, centered on the logo, minimal copy, and a dark
+flashlight-reveal interaction rather than a scaffold/product explainer homepage.
+
+Context:
+The previous homepage described the scaffold and route shells clearly, but it did not establish the
+tone of Hawkshaw as a live social mystery experience. The public landing page should create
+intrigue first and leave detailed product explanation to later marketing material and the signed-in
+app surfaces.
+
+Consequences:
+
+- The homepage now prioritizes atmosphere, brand, and a handful of teaser fragments over feature
+  sections and route links.
+- Desktop uses a pointer-driven flashlight reveal, while mobile falls back to an ambient central
+  spotlight.
+- The public landing page intentionally minimizes product detail in favor of mystery and tone.
