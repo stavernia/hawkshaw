@@ -111,7 +111,6 @@ const teaserFragments: FragmentCard[] = [
 function useFlashlightState() {
   const [desktopFlashlight, setDesktopFlashlight] = useState(false);
   const [flashlightEnabled, setFlashlightEnabled] = useState(false);
-  const [position, setPosition] = useState({ x: 50, y: 48 });
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -135,7 +134,7 @@ function useFlashlightState() {
     };
   }, []);
 
-  return { desktopFlashlight, flashlightEnabled, setFlashlightEnabled, position, setPosition };
+  return { desktopFlashlight, flashlightEnabled, setFlashlightEnabled };
 }
 
 function getRevealStrength(pointerX: number, pointerY: number, targetX: number, targetY: number) {
@@ -151,33 +150,145 @@ function getRevealStrength(pointerX: number, pointerY: number, targetX: number, 
 }
 
 export function TeaserLandingScene() {
-  const { desktopFlashlight, flashlightEnabled, setFlashlightEnabled, position, setPosition } =
-    useFlashlightState();
+  const { desktopFlashlight, flashlightEnabled, setFlashlightEnabled } = useFlashlightState();
+  const rootRef = useRef<HTMLElement | null>(null);
   const mobileCardRefs = useRef<Array<HTMLElement | null>>([]);
+  const desktopCardRefs = useRef<Array<HTMLElement | null>>([]);
+  const flashlightPositionRef = useRef({ x: 50, y: 48 });
+  const flashlightFrameRef = useRef<number | null>(null);
 
   const revealMask = useMemo(
     () =>
       desktopFlashlight && flashlightEnabled
-        ? `radial-gradient(circle 11rem at ${position.x}% ${position.y}%, rgba(255,255,255,1) 0%, rgba(255,255,255,0.98) 18%, rgba(255,255,255,0.72) 34%, rgba(255,255,255,0.26) 48%, transparent 64%)`
+        ? "radial-gradient(circle 11rem at var(--flashlight-x, 50%) var(--flashlight-y, 48%), rgba(255,255,255,1) 0%, rgba(255,255,255,0.98) 18%, rgba(255,255,255,0.72) 34%, rgba(255,255,255,0.26) 48%, transparent 64%)"
         : desktopFlashlight
           ? "radial-gradient(circle 11rem at 50% 38%, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 22%, transparent 64%)"
-          : "radial-gradient(circle 14rem at 50% 38%, rgba(255,255,255,0.84) 0%, rgba(255,255,255,0.54) 34%, transparent 68%)",
-    [desktopFlashlight, flashlightEnabled, position.x, position.y],
+        : "radial-gradient(circle 14rem at 50% 38%, rgba(255,255,255,0.84) 0%, rgba(255,255,255,0.54) 34%, transparent 68%)",
+    [desktopFlashlight, flashlightEnabled],
   );
 
   const spotlightStyle = useMemo(
     () => ({
       background: desktopFlashlight && flashlightEnabled
         ? [
-            `radial-gradient(circle 15rem at ${position.x}% ${position.y}%, rgba(251, 228, 191, 0.68) 0%, rgba(238, 192, 129, 0.34) 14%, rgba(176, 126, 196, 0.16) 25%, rgba(65, 47, 82, 0.14) 34%, rgba(25, 20, 16, 0.48) 48%, rgba(7, 7, 8, 0.84) 70%, rgba(3, 3, 4, 0.985) 90%)`,
-            `radial-gradient(circle 28rem at ${position.x}% ${position.y}%, rgba(212, 171, 109, 0.24) 0%, rgba(114, 92, 155, 0.12) 24%, transparent 54%)`,
+            "radial-gradient(circle 15rem at var(--flashlight-x, 50%) var(--flashlight-y, 48%), rgba(251, 228, 191, 0.68) 0%, rgba(238, 192, 129, 0.34) 14%, rgba(176, 126, 196, 0.16) 25%, rgba(65, 47, 82, 0.14) 34%, rgba(25, 20, 16, 0.48) 48%, rgba(7, 7, 8, 0.84) 70%, rgba(3, 3, 4, 0.985) 90%)",
+            "radial-gradient(circle 28rem at var(--flashlight-x, 50%) var(--flashlight-y, 48%), rgba(212, 171, 109, 0.24) 0%, rgba(114, 92, 155, 0.12) 24%, transparent 54%)",
           ].join(",")
         : desktopFlashlight
           ? "linear-gradient(180deg, rgba(4,5,6,0.06) 0%, rgba(3,3,4,0.14) 100%)"
           : "radial-gradient(circle 19rem at 50% 38%, rgba(244, 218, 179, 0.18) 0%, rgba(219, 182, 128, 0.08) 18%, rgba(24, 20, 16, 0.44) 52%, rgba(5, 5, 6, 0.92) 78%, rgba(3, 3, 4, 0.985) 94%)",
     }),
-    [desktopFlashlight, flashlightEnabled, position.x, position.y],
+    [desktopFlashlight, flashlightEnabled],
   );
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+
+    const applyDesktopLighting = (enabled: boolean) => {
+      const { x, y } = flashlightPositionRef.current;
+
+      root.style.setProperty("--flashlight-x", `${x}%`);
+      root.style.setProperty("--flashlight-y", `${y}%`);
+
+      teaserFragments.forEach((fragment, index) => {
+        const element = desktopCardRefs.current[index];
+        if (!element) {
+          return;
+        }
+
+        const reveal = enabled ? getRevealStrength(x, y, fragment.x, fragment.y) : 0;
+        const rotation = fragment.rotation.includes("-") ? "-3deg" : "3deg";
+
+        element.style.opacity = enabled ? `${reveal * 0.98}` : "0";
+        element.style.transform = `translate(-50%, -50%) scale(${0.96 + reveal * 0.05}) rotate(${rotation})`;
+      });
+    };
+
+    const scheduleDesktopLighting = (enabled: boolean) => {
+      if (flashlightFrameRef.current) {
+        window.cancelAnimationFrame(flashlightFrameRef.current);
+      }
+
+      flashlightFrameRef.current = window.requestAnimationFrame(() => {
+        flashlightFrameRef.current = null;
+        applyDesktopLighting(enabled);
+      });
+    };
+
+    scheduleDesktopLighting(flashlightEnabled && desktopFlashlight);
+
+    return () => {
+      if (flashlightFrameRef.current) {
+        window.cancelAnimationFrame(flashlightFrameRef.current);
+      }
+    };
+  }, [desktopFlashlight, flashlightEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !desktopFlashlight || !flashlightEnabled) {
+      return;
+    }
+
+    const updateDesktopLighting = () => {
+      const root = rootRef.current;
+      if (!root) {
+        flashlightFrameRef.current = null;
+        return;
+      }
+
+      const { x, y } = flashlightPositionRef.current;
+      root.style.setProperty("--flashlight-x", `${x}%`);
+      root.style.setProperty("--flashlight-y", `${y}%`);
+
+      teaserFragments.forEach((fragment, index) => {
+        const element = desktopCardRefs.current[index];
+        if (!element) {
+          return;
+        }
+
+        const reveal = getRevealStrength(x, y, fragment.x, fragment.y);
+        const rotation = fragment.rotation.includes("-") ? "-3deg" : "3deg";
+
+        element.style.opacity = `${reveal * 0.98}`;
+        element.style.transform = `translate(-50%, -50%) scale(${0.96 + reveal * 0.05}) rotate(${rotation})`;
+      });
+
+      flashlightFrameRef.current = null;
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const root = rootRef.current;
+      if (!root) {
+        return;
+      }
+
+      const bounds = root.getBoundingClientRect();
+      const x = ((event.clientX - bounds.left) / bounds.width) * 100;
+      const y = ((event.clientY - bounds.top) / bounds.height) * 100;
+
+      flashlightPositionRef.current = { x, y };
+
+      if (flashlightFrameRef.current) {
+        return;
+      }
+
+      flashlightFrameRef.current = window.requestAnimationFrame(updateDesktopLighting);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+
+      if (flashlightFrameRef.current) {
+        window.cancelAnimationFrame(flashlightFrameRef.current);
+        flashlightFrameRef.current = null;
+      }
+    };
+  }, [desktopFlashlight, flashlightEnabled]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -240,6 +351,7 @@ export function TeaserLandingScene() {
 
   return (
     <main
+      ref={rootRef}
       className="relative min-h-screen overflow-hidden bg-[#040506] text-stone-100 md:h-screen"
       onClick={(event) => {
         if (desktopFlashlight) {
@@ -247,20 +359,11 @@ export function TeaserLandingScene() {
           const x = ((event.clientX - bounds.left) / bounds.width) * 100;
           const y = ((event.clientY - bounds.top) / bounds.height) * 100;
 
-          setPosition({ x, y });
+          flashlightPositionRef.current = { x, y };
+          event.currentTarget.style.setProperty("--flashlight-x", `${x}%`);
+          event.currentTarget.style.setProperty("--flashlight-y", `${y}%`);
           setFlashlightEnabled((current) => !current);
         }
-      }}
-      onPointerMove={(event) => {
-        if (!desktopFlashlight || !flashlightEnabled) {
-          return;
-        }
-
-        const bounds = event.currentTarget.getBoundingClientRect();
-        const x = ((event.clientX - bounds.left) / bounds.width) * 100;
-        const y = ((event.clientY - bounds.top) / bounds.height) * 100;
-
-        setPosition({ x, y });
       }}
     >
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,7,8,0.96)_0%,rgba(3,3,4,1)_100%)]" />
@@ -268,7 +371,7 @@ export function TeaserLandingScene() {
       <div className="absolute inset-0 opacity-[0.11] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:72px_72px]" />
       <div className="absolute inset-0 opacity-[0.08] [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.14)_0px,rgba(255,255,255,0.14)_1px,transparent_1px,transparent_3px)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_22%,rgba(0,0,0,0.72)_86%)]" />
-      <div className="pointer-events-none absolute inset-0 transition-[background] duration-100 ease-out" style={spotlightStyle} />
+      <div className="pointer-events-none absolute inset-0" style={spotlightStyle} />
 
       <div className="pointer-events-none fixed inset-x-0 top-[56vh] z-10 h-64 -translate-y-1/2 md:hidden">
         <div className="mx-auto h-full w-full max-w-md bg-[radial-gradient(circle,rgba(247,225,189,0.18)_0%,rgba(214,171,110,0.08)_24%,rgba(110,86,145,0.05)_42%,transparent_72%)] blur-2xl" />
@@ -463,37 +566,36 @@ export function TeaserLandingScene() {
 
             <div className="pointer-events-none absolute inset-0 hidden md:block">
               {teaserFragments.map((fragment) => {
-                const reveal = desktopFlashlight
-                  ? getRevealStrength(position.x, position.y, fragment.x, fragment.y)
-                  : 0;
-
                 return (
                   <article
                     key={fragment.title}
+                    ref={(node) => {
+                      desktopCardRefs.current[teaserFragments.indexOf(fragment)] = node;
+                    }}
                     className={cn(
-                      "absolute rounded-[1.35rem] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 shadow-[0_20px_50px_-28px_rgba(0,0,0,1)] backdrop-blur-md transition duration-150 ease-out",
+                      "absolute rounded-[1.35rem] border border-white/10 bg-[rgba(255,255,255,0.05)] p-4 shadow-[0_20px_50px_-28px_rgba(0,0,0,1)] backdrop-blur-md will-change-[opacity,transform]",
                       fragment.rotation,
                       fragment.widthClass,
                     )}
                     style={{
                       left: `${fragment.x}%`,
                       top: `${fragment.y}%`,
-                      opacity: flashlightEnabled ? reveal * 0.98 : 0,
-                      transform: `translate(-50%, -50%) scale(${0.96 + reveal * 0.05}) rotate(${fragment.rotation.includes("-") ? "-3deg" : "3deg"})`,
+                      opacity: 0,
+                      transform: `translate(-50%, -50%) scale(0.96) rotate(${fragment.rotation.includes("-") ? "-3deg" : "3deg"})`,
                     }}
+                  >
+                    <p className="text-[0.65rem] uppercase tracking-[0.42em] text-stone-500">{fragment.label}</p>
+                    <h2
+                      className="mt-2.5 text-[1.45rem] leading-[1.04] text-stone-100"
+                      style={{
+                        fontFamily:
+                          '"Baskerville", "Libre Baskerville", "Iowan Old Style", "Palatino Linotype", serif',
+                      }}
                     >
-                      <p className="text-[0.65rem] uppercase tracking-[0.42em] text-stone-500">{fragment.label}</p>
-                      <h2
-                        className="mt-2.5 text-[1.45rem] leading-[1.04] text-stone-100"
-                        style={{
-                          fontFamily:
-                            '"Baskerville", "Libre Baskerville", "Iowan Old Style", "Palatino Linotype", serif',
-                        }}
-                      >
-                        {fragment.title}
-                      </h2>
-                      <p className="mt-2 text-[0.92rem] leading-6 text-stone-300/92">{fragment.detail}</p>
-                    </article>
+                      {fragment.title}
+                    </h2>
+                    <p className="mt-2 text-[0.92rem] leading-6 text-stone-300/92">{fragment.detail}</p>
+                  </article>
                 );
               })}
             </div>
