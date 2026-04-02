@@ -88,7 +88,7 @@ const teaserFragments: FragmentCard[] = [
   },
   {
     label: "Evidence",
-    title: "Accuse before the truth disappears.",
+    title: "Uncover the truth before it disappears.",
     detail: "One reveal can rearrange the whole night.",
     x: 77,
     y: 48,
@@ -98,7 +98,7 @@ const teaserFragments: FragmentCard[] = [
   },
   {
     label: "Choice",
-    title: "Not every truth should be revealed.",
+    title: "Not every clue should be revealed.",
     detail: "The hardest choice may be what to do with what you know.",
     x: 87,
     y: 67,
