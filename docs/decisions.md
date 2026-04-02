@@ -401,3 +401,24 @@ Consequences:
 - Desktop uses a pointer-driven flashlight reveal, while mobile falls back to an ambient central
   spotlight.
 - The public landing page intentionally minimizes product detail in favor of mystery and tone.
+
+## 2026-04-02 - accepted
+
+Decision:
+Standardize Hawkshaw on Node 24 across local development, CI, and Vercel-facing repo config, while
+keeping dependency updates pragmatic instead of forcing simultaneous major-version migrations.
+
+Context:
+The repo had drifted into an inconsistent runtime state: package engines allowed Node 20-22, CI
+installed Node 20, and Vercel project settings were already targeting Node 24. That mismatch makes
+deploy behavior harder to reason about and produces avoidable Vercel warnings. At the same time,
+the package graph now has newer major releases available, but moving Prisma, Tailwind, TypeScript,
+and ESLint to new major lines is a separate migration effort rather than a safe runtime fix.
+
+Consequences:
+
+- `package.json` now targets Node 24 for local and hosted builds.
+- CI now installs Node 24.
+- `.nvmrc` points local development at Node 24.
+- Same-line dependency updates can move with runtime alignment, but broad major-version upgrades
+  should be handled in a dedicated pass with migration work and validation.
