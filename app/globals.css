@@ -61,3 +61,12 @@ a {
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
 }
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

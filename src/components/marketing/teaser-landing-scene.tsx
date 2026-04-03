@@ -1,12 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Uncial_Antiqua } from "next/font/google";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/src/components/ui/button";
-import { SITE_ROUTES } from "@/src/config/routes";
 import { cn } from "@/src/lib/utils";
+import { MarketingEntryButton } from "@/src/components/layout/marketing-entry-button";
 
 const uncialAntiqua = Uncial_Antiqua({
   weight: "400",
@@ -149,7 +147,7 @@ function getRevealStrength(pointerX: number, pointerY: number, targetX: number, 
   return Math.max(0, 1 - distance / 28);
 }
 
-export function TeaserLandingScene() {
+export function TeaserLandingScene({ isSignedIn = false }: { isSignedIn?: boolean }) {
   const { desktopFlashlight, flashlightEnabled, setFlashlightEnabled } = useFlashlightState();
   const rootRef = useRef<HTMLElement | null>(null);
   const mobileCardRefs = useRef<Array<HTMLElement | null>>([]);
@@ -380,20 +378,13 @@ export function TeaserLandingScene() {
       <div className="relative z-10 flex min-h-screen flex-col md:h-screen">
         <div className="md:hidden">
           <header className="flex items-center justify-end px-5 pb-3 pt-5">
-            <Button
-              asChild
-              variant="outline"
-              className="rounded-full border-white/15 bg-white/[0.03] px-4 text-stone-100 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-sm hover:bg-white/[0.08] hover:text-white"
+            <div
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
             >
-              <Link
-                href={SITE_ROUTES.login}
-                onClick={(event) => {
-                  event.stopPropagation();
-                }}
-              >
-                Sign In
-              </Link>
-            </Button>
+              <MarketingEntryButton isSignedIn={isSignedIn} />
+            </div>
           </header>
 
           <section className="relative flex min-h-[88svh] flex-col items-center justify-center px-5 pb-12 pt-2 text-center">
@@ -407,6 +398,8 @@ export function TeaserLandingScene() {
                   width={678}
                   height={435}
                   priority
+                  loading="eager"
+                  fetchPriority="high"
                   className="relative h-auto w-[18.25rem] opacity-[0.78] drop-shadow-[0_30px_70px_rgba(0,0,0,0.82)]"
                 />
               </div>
@@ -470,20 +463,13 @@ export function TeaserLandingScene() {
               Click to {flashlightEnabled ? "hide" : "light"}
             </p>
           ) : null}
-          <Button
-            asChild
-            variant="outline"
-            className="rounded-full border-white/15 bg-white/[0.03] px-4 text-stone-100 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-sm hover:bg-white/[0.08] hover:text-white"
+          <div
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
           >
-            <Link
-              href={SITE_ROUTES.login}
-              onClick={(event) => {
-                event.stopPropagation();
-              }}
-            >
-              Sign In
-            </Link>
-          </Button>
+            <MarketingEntryButton isSignedIn={isSignedIn} />
+          </div>
         </header>
 
         <section className="relative hidden flex-1 items-center justify-center px-5 pb-10 pt-4 md:flex md:px-8 md:py-6">
@@ -500,6 +486,8 @@ export function TeaserLandingScene() {
                     width={678}
                     height={435}
                     priority
+                    loading="eager"
+                    fetchPriority="high"
                     className="absolute left-1/2 top-1/2 h-auto w-[17.5rem] -translate-x-1/2 -translate-y-1/2 opacity-[0.34] drop-shadow-[0_30px_70px_rgba(0,0,0,0.78)] md:w-[32.5rem] lg:w-[37rem]"
                   />
                   <div

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "changeset": "changeset",
-    "dev": "next dev --webpack",
+    "dev": "next dev --port 3002 --webpack",
     "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint .",
