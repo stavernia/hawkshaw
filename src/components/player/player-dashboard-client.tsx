@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
@@ -19,34 +19,16 @@ import {
 
 const PLAYER_TABS = [
   { key: "overview", label: "Overview" },
-  { key: "character", label: "Character" },
-  { key: "players", label: "Players" },
-  { key: "evidence", label: "Evidence" },
+  { key: "goals", label: "Goals" },
+  { key: "characters", label: "Characters" },
+  { key: "inventory", label: "Inventory" },
   { key: "actions", label: "Actions" },
   { key: "rooms", label: "Rooms" },
   { key: "finale", label: "Finale" },
 ] as const;
 
 type PlayerTab = (typeof PLAYER_TABS)[number]["key"];
-
-function stageLabel(stage: string) {
-  switch (stage) {
-    case "setup":
-      return "Setup";
-    case "act-1":
-      return "Act 1";
-    case "event-1":
-      return "Event 1";
-    case "act-2":
-      return "Act 2";
-    case "finale":
-      return "Finale";
-    case "resolution":
-      return "Resolution";
-    default:
-      return stage;
-  }
-}
+export type { PlayerTab };
 
 function canUseAppActions(stage: string) {
   return stage === "act-1" || stage === "act-2";
@@ -76,175 +58,169 @@ export function PlayerDashboardClient({
       return;
     }
 
-    const localControlledIds = new Set([dashboard.participant.id, ...(dashboard.controlledDashboards ?? []).map((entry) => entry.participant.id)]);
+    const localControlledIds = new Set([
+      dashboard.participant.id,
+      ...(dashboard.controlledDashboards ?? []).map((entry) => entry.participant.id),
+    ]);
 
     currentDashboard.seatLinks.forEach((seat) => {
       if (!localControlledIds.has(seat.id)) {
         router.prefetch(`${seat.href}&tab=${activeTab}`);
       }
     });
-  }, [activeTab, currentDashboard.seatLinks, dashboard.canControlCharacters, dashboard.controlledDashboards, dashboard.participant.id, router]);
+  }, [
+    activeTab,
+    currentDashboard.seatLinks,
+    dashboard.canControlCharacters,
+    dashboard.controlledDashboards,
+    dashboard.participant.id,
+    router,
+  ]);
 
   return (
     <div className="grid gap-4 md:gap-6">
-      <Card className="app-surface border-white/70">
-        <CardHeader className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                {currentDashboard.title} · {stageLabel(currentDashboard.stage)}
-              </p>
-              <CardTitle className="font-[family-name:var(--font-heading)] text-4xl leading-none md:text-5xl">
-                {currentDashboard.role?.characterName ?? "Unassigned Character"}
-              </CardTitle>
-              <p className="text-base font-medium text-foreground md:text-lg">
-                {currentDashboard.role?.characterTitle ?? "Character unavailable"}
-              </p>
-              <p className="text-sm text-muted-foreground">Played by {currentDashboard.participant.actorName}</p>
-            </div>
-            <div className="rounded-2xl border bg-white/80 px-4 py-3 text-sm">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Actions Left</p>
-              <p className="mt-1 text-xl font-semibold text-foreground">{currentDashboard.participant.actionsRemaining}</p>
-            </div>
-          </div>
-          {dashboard.canControlCharacters ? (
-            <div className="flex flex-wrap gap-2 rounded-2xl border bg-white/80 p-3">
-              {currentDashboard.seatLinks.map((seat) => {
-                const href = `${seat.href}&tab=${activeTab}`;
-                const cached = controlledDashboards.find((entry) => entry.participant.id === seat.id);
+      {dashboard.canControlCharacters ? (
+        <Card className="app-surface overflow-hidden border-white/70">
+          <CardContent className="px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
+            <div className="flex items-center gap-2">
+              <select
+                id="host-player-switcher"
+                className="h-10 min-w-0 flex-1 rounded-xl border border-input bg-background/70 px-3 py-2 text-sm"
+                value={currentDashboard.participant.id}
+                onChange={(event) => {
+                  const nextSeatId = event.target.value;
+                  const seat = currentDashboard.seatLinks.find((entry) => entry.id === nextSeatId);
+                  if (!seat) {
+                    return;
+                  }
 
-                if (cached) {
-                  return (
-                    <Button
-                      key={seat.id}
-                      size="sm"
-                      type="button"
-                      variant={seat.id === currentDashboard.participant.id ? "default" : "outline"}
-                      onClick={() => {
-                        setActiveDashboardId(seat.id);
-                        window.history.replaceState(null, "", href);
-                      }}
-                    >
-                      {seat.characterName ?? seat.displayName}
-                    </Button>
-                  );
-                }
+                  const href = `${seat.href}&tab=${activeTab}`;
+                  const cached = controlledDashboards.find((entry) => entry.participant.id === nextSeatId);
 
-                return (
-                  <Link key={seat.id} href={href} prefetch>
-                    <Button size="sm" type="button" variant={seat.id === currentDashboard.participant.id ? "default" : "outline"}>
-                      {seat.characterName ?? seat.displayName}
-                    </Button>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          <div className="flex snap-x gap-2 overflow-x-auto pb-1">
-            {PLAYER_TABS.map((entry) => (
-              <Button
-                key={entry.key}
-                size="sm"
-                type="button"
-                variant={activeTab === entry.key ? "default" : "outline"}
-                onClick={() => setActiveTab(entry.key)}
+                  if (cached) {
+                    setActiveDashboardId(nextSeatId);
+                    window.history.replaceState(null, "", href);
+                    return;
+                  }
+
+                  window.location.assign(href);
+                }}
               >
-                {entry.label}
-              </Button>
-            ))}
+                {currentDashboard.seatLinks.map((seat) => (
+                  <option key={seat.id} value={seat.id}>
+                    {seat.characterName ?? seat.displayName}
+                  </option>
+                ))}
+              </select>
+              <Link href={currentDashboard.gameId ? `/g/${currentDashboard.gameId}/host?section=controls` : "#"}>
+                <Button className="h-10 shrink-0 rounded-full px-3 text-[13px]" size="sm" type="button" variant="outline">
+                  Host
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card className="app-surface overflow-hidden border-white/70">
+        <CardHeader className="space-y-3 p-4 sm:p-6">
+          <div className="min-w-0 space-y-2">
+            <CardTitle className="font-[family-name:var(--font-heading)] text-3xl leading-none sm:text-4xl md:text-5xl">
+              {currentDashboard.role?.characterName ?? "Unassigned Character"}
+            </CardTitle>
+            <p className="text-base font-medium text-foreground sm:text-lg">
+              {currentDashboard.role?.characterTitle ?? "Character unavailable"}
+            </p>
+            <p className="text-sm text-muted-foreground">Played by {currentDashboard.participant.actorName}</p>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-1 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
+          <div className="-mx-1 overflow-x-auto scrollbar-hidden px-1">
+            <div className="flex w-max gap-1.5">
+              {PLAYER_TABS.map((entry) => (
+                <Button
+                  key={entry.key}
+                  className="h-9 shrink-0 rounded-full px-3.5 text-[14px]"
+                  size="sm"
+                  type="button"
+                  variant={activeTab === entry.key ? "default" : "outline"}
+                  onClick={() => setActiveTab(entry.key)}
+                >
+                  {entry.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {activeTab === "overview" ? (
-        <Card className="app-surface border-white/70">
+        <Card className="app-surface overflow-hidden border-white/70">
           <CardHeader>
-            <CardTitle>Overview</CardTitle>
-            <CardDescription>What this game is, where you are, and what matters right now.</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl">Overview</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
-              <p className="font-medium text-foreground">Where are we?</p>
-              <p className="mt-2 text-muted-foreground">{currentDashboard.scenarioSummary}</p>
+              <p className="font-medium text-foreground">The Scene</p>
+              <p className="mt-2 break-words text-muted-foreground">{currentDashboard.scenarioSummary}</p>
             </div>
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
-              <p className="font-medium text-foreground">Current moment</p>
-              <p className="mt-2 text-muted-foreground">
-                {currentDashboard.eventTitle}: {currentDashboard.eventDescription}
-              </p>
+              <p className="font-medium text-foreground">{currentDashboard.eventTitle}</p>
+              <p className="mt-2 break-words text-muted-foreground">{currentDashboard.eventDescription}</p>
             </div>
-            <div className="rounded-2xl border bg-white/80 p-4 text-sm">
-              <p className="font-medium text-foreground">Recent activity</p>
-              <div className="mt-3 grid gap-2">
-                {currentDashboard.actionLog.length > 0 ? (
-                  currentDashboard.actionLog.map((entry) => (
-                    <div key={entry.id} className="rounded-xl border bg-background/70 p-3">
-                      <p className="font-medium text-foreground">{entry.actionType}</p>
-                      <p className="mt-1 text-muted-foreground">{entry.summary}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">No logged activity yet.</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {activeTab === "character" ? (
-        <Card className="app-surface border-white/70">
-          <CardHeader>
-            <CardTitle>My Character</CardTitle>
-            <CardDescription>Your identity, private context, and current goals.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
               <p className="font-medium text-foreground">{currentDashboard.role?.characterName}</p>
-              <p className="mt-1 text-muted-foreground">{currentDashboard.role?.publicDescription}</p>
-              <p className="mt-3 text-foreground">{currentDashboard.role?.privateDescription}</p>
+              <p className="mt-1 break-words text-muted-foreground">{currentDashboard.role?.publicDescription}</p>
+              <p className="mt-3 break-words text-foreground">{currentDashboard.role?.privateDescription}</p>
               {currentDashboard.role?.actTwoBriefing ? (
-                <div className="mt-3 rounded-xl bg-primary/10 p-3 text-foreground">{currentDashboard.role.actTwoBriefing}</div>
-              ) : null}
-            </div>
-            <div className="grid gap-3">
-              {currentDashboard.goals.map((goal) => (
-                <div key={goal.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-foreground">{goal.title}</p>
-                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{goal.status}</span>
-                  </div>
-                  <p className="mt-2 text-muted-foreground">{goal.description}</p>
+                <div className="mt-3 rounded-xl bg-primary/10 p-3 break-words text-foreground">
+                  {currentDashboard.role.actTwoBriefing}
                 </div>
-              ))}
+              ) : null}
             </div>
           </CardContent>
         </Card>
       ) : null}
 
-      {activeTab === "players" ? (
-        <Card className="app-surface border-white/70">
+      {activeTab === "goals" ? (
+        <Card className="app-surface overflow-hidden border-white/70">
           <CardHeader>
-            <CardTitle>Players</CardTitle>
-            <CardDescription>Character-first roster with your personal knowledge layered in.</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl">Goals</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {currentDashboard.goals.map((goal) => (
+              <div key={goal.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="break-words font-medium text-foreground">{goal.title}</p>
+                  <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{goal.status}</span>
+                </div>
+                <p className="mt-2 break-words text-muted-foreground">{goal.description}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {activeTab === "characters" ? (
+        <Card className="app-surface overflow-hidden border-white/70">
+          <CardHeader>
+            <CardTitle className="text-2xl sm:text-3xl">Characters</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             {currentDashboard.players.map((player) => (
               <div key={player.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
                 <p className="text-lg font-medium text-foreground">{player.characterName ?? "Unknown Character"}</p>
-                <p className="text-muted-foreground">
+                <p className="break-words text-muted-foreground">
                   {player.characterTitle ?? "Unknown role"} · played by {player.actorName}
                 </p>
-                <p className="mt-2 text-muted-foreground">{player.publicDescription}</p>
+                <p className="mt-2 break-words text-muted-foreground">{player.publicDescription}</p>
                 <div className="mt-3 space-y-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">What you know</p>
                   {player.knownFacts.length > 0 ? (
                     player.knownFacts.map((fact) => (
                       <div key={fact.id} className="rounded-xl border bg-background/70 p-3">
                         <p className="font-medium text-foreground">{fact.title}</p>
-                        <p className="mt-1 text-muted-foreground">{fact.body}</p>
+                        <p className="mt-1 break-words text-muted-foreground">{fact.body}</p>
                       </div>
                     ))
                   ) : (
@@ -257,49 +233,54 @@ export function PlayerDashboardClient({
         </Card>
       ) : null}
 
-      {activeTab === "evidence" ? (
+      {activeTab === "inventory" ? (
+        <Card className="app-surface overflow-hidden border-white/70">
+          <CardHeader>
+            <CardTitle className="text-2xl sm:text-3xl">Inventory</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Clues</p>
+              {currentDashboard.clues.map((clue) => (
+                <div key={clue.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <p className="font-medium text-foreground">{clue.title}</p>
+                  <p className="mt-2 break-words text-muted-foreground">{clue.body}</p>
+                </div>
+              ))}
+              {currentDashboard.clues.length === 0 ? <p className="text-sm text-muted-foreground">No clues yet.</p> : null}
+            </div>
+            <div className="grid gap-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Items</p>
+              {currentDashboard.items.map((item) => (
+                <div key={item.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <p className="font-medium text-foreground">
+                    {item.label} × {item.quantity}
+                  </p>
+                  <p className="mt-2 break-words text-muted-foreground">{item.description}</p>
+                </div>
+              ))}
+              {currentDashboard.items.length === 0 ? <p className="text-sm text-muted-foreground">No items yet.</p> : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {activeTab === "actions" ? (
         <div className="grid gap-4">
-          <Card className="app-surface border-white/70">
-            <CardHeader>
-              <CardTitle>Evidence</CardTitle>
-              <CardDescription>Your clues and inventory stay private unless you choose to share them.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-3">
-                {currentDashboard.clues.map((clue) => (
-                  <div key={clue.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
-                    <p className="font-medium text-foreground">{clue.title}</p>
-                    <p className="mt-2 text-muted-foreground">{clue.body}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="grid gap-3">
-                {currentDashboard.items.map((item) => (
-                  <div key={item.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
-                    <p className="font-medium text-foreground">
-                      {item.label} × {item.quantity}
-                    </p>
-                    <p className="mt-2 text-muted-foreground">{item.description}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="app-surface border-white/70">
+          <Card className="app-surface overflow-hidden border-white/70">
             <CardHeader>
               <CardTitle>Trade Requests</CardTitle>
-              <CardDescription>Trade stays nested under evidence for this prototype.</CardDescription>
             </CardHeader>
-          <CardContent className="grid gap-3">
+            <CardContent className="grid gap-3">
               {currentDashboard.pendingIncomingTrades.map((trade) => (
                 <form key={trade.id} action={respondToTradeAction} className="rounded-2xl border bg-white/80 p-4 text-sm">
                   <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
                   <input name="gameId" type="hidden" value={currentDashboard.gameId} />
                   <input name="tradeId" type="hidden" value={trade.id} />
-                  <p className="font-medium text-foreground">
+                  <p className="break-words font-medium text-foreground">
                     {trade.proposerName} offers {trade.itemLabel}
                   </p>
-                  <div className="mt-3 flex gap-3">
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                     <Button name="decision" type="submit" value="accept">
                       Accept
                     </Button>
@@ -311,7 +292,7 @@ export function PlayerDashboardClient({
               ))}
               {currentDashboard.pendingOutgoingTrades.map((trade) => (
                 <div key={trade.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
-                  <p className="font-medium text-foreground">
+                  <p className="break-words font-medium text-foreground">
                     To {trade.responderName}: {trade.itemLabel}
                   </p>
                   <p className="mt-1 text-muted-foreground">{trade.status}</p>
@@ -322,19 +303,10 @@ export function PlayerDashboardClient({
               ) : null}
             </CardContent>
           </Card>
-        </div>
-      ) : null}
 
-      {activeTab === "actions" ? (
-        <div className="grid gap-4">
-          <Card className="app-surface border-white/70">
+          <Card className="app-surface overflow-hidden border-white/70">
             <CardHeader>
               <CardTitle>Actions</CardTitle>
-              <CardDescription>
-                {canUseActions
-                  ? "Choose the action first, then choose the target."
-                  : "App actions pause during Event 1. Read updates and wait for the next active act."}
-              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <form action={pickpocketAction} className="grid gap-3 rounded-2xl border bg-white/80 p-4">
@@ -432,24 +404,16 @@ export function PlayerDashboardClient({
       ) : null}
 
       {activeTab === "rooms" ? (
-        <Card className="app-surface border-white/70">
+        <Card className="app-surface overflow-hidden border-white/70">
           <CardHeader>
             <CardTitle>Rooms</CardTitle>
-            <CardDescription>
-              {canUseActions
-                ? "Use room links directly in the prototype. QR codes can point here later."
-                : "Room routes stay visible during Event 1, but interaction resumes when Act 2 begins."}
-            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {currentDashboard.rooms.map((room) => (
-              <div
-                key={room.id}
-                className="rounded-2xl border bg-white/80 p-4 text-sm"
-              >
+              <div key={room.id} className="rounded-2xl border bg-white/80 p-4 text-sm">
                 <p className="font-medium text-foreground">{room.name}</p>
                 {canUseActions ? (
-                  <Link className="mt-2 block text-primary" href={room.href}>
+                  <Link className="mt-2 block break-all text-primary" href={room.href}>
                     Open room actions
                   </Link>
                 ) : (
@@ -464,12 +428,12 @@ export function PlayerDashboardClient({
       {activeTab === "finale" ? (
         <div className="grid gap-4">
           {currentDashboard.decision ? (
-            <Card className="app-surface border-white/70">
+            <Card className="app-surface overflow-hidden border-white/70">
               <CardHeader>
                 <CardTitle>Decision</CardTitle>
-                <CardDescription>{currentDashboard.decision.description}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3">
+                <p className="text-sm text-muted-foreground">{currentDashboard.decision.description}</p>
                 <form action={submitDecisionAction} className="grid gap-3 rounded-2xl border bg-white/80 p-4">
                   <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
                   <input name="gameId" type="hidden" value={currentDashboard.gameId} />
@@ -488,10 +452,9 @@ export function PlayerDashboardClient({
             </Card>
           ) : null}
 
-          <Card className="app-surface border-white/70">
+          <Card className="app-surface overflow-hidden border-white/70">
             <CardHeader>
               <CardTitle>Accusation</CardTitle>
-              <CardDescription>Submit suspect, motive, and means. Character names take precedence here.</CardDescription>
             </CardHeader>
             <CardContent>
               <form action={submitAccusationAction} className="grid gap-4">
@@ -529,25 +492,24 @@ export function PlayerDashboardClient({
           </Card>
 
           {currentDashboard.reveal ? (
-            <Card className="app-surface border-white/70">
+            <Card className="app-surface overflow-hidden border-white/70">
               <CardHeader>
                 <CardTitle>Resolution</CardTitle>
-                <CardDescription>The host has opened the reveal.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3 text-sm">
                 <div className="rounded-2xl border bg-white/80 p-4">
                   <p className="font-medium text-foreground">True suspect</p>
-                  <p className="mt-2 text-muted-foreground">{currentDashboard.reveal.solution.suspectName}</p>
+                  <p className="mt-2 break-words text-muted-foreground">{currentDashboard.reveal.solution.suspectName}</p>
                 </div>
                 <div className="rounded-2xl border bg-white/80 p-4">
                   <p className="font-medium text-foreground">Motive / Means</p>
-                  <p className="mt-2 text-muted-foreground">
+                  <p className="mt-2 break-words text-muted-foreground">
                     {currentDashboard.reveal.solution.motive} · {currentDashboard.reveal.solution.means}
                   </p>
                 </div>
                 <div className="rounded-2xl border bg-white/80 p-4">
                   <p className="font-medium text-foreground">Outcome</p>
-                  <p className="mt-2 text-muted-foreground">{currentDashboard.reveal.solution.summary}</p>
+                  <p className="mt-2 break-words text-muted-foreground">{currentDashboard.reveal.solution.summary}</p>
                 </div>
                 <div className="rounded-2xl border bg-primary/10 p-4">
                   <p className="font-medium text-foreground">Score</p>

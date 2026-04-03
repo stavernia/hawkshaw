@@ -126,6 +126,26 @@ Consequences:
 - `pnpm build` stays on `next build --webpack`.
 - Turbopack can be revisited later once the stack is more mature and stable for this project.
 
+## 2026-04-02 - accepted
+
+Decision:
+Use stage-only header context, goal-first player navigation, and query-driven host subpages.
+
+Context:
+The player header was duplicating lifecycle state with both stage and a second status label, while
+the player tabs were burying goals inside role content and spending space on explanatory copy. The
+host surface also still behaved like a long dashboard when the operational need is to jump directly
+between focused areas.
+
+Consequences:
+
+- Shared app headers now show the scenario title and current stage only.
+- Player navigation now prioritizes `Overview`, `Goals`, `Characters`, and `Inventory`, with
+  overview combining event, location, and character context into a single onboarding-style page.
+- Trade requests now live under `Actions`, and low-signal card descriptions are reduced.
+- Host menu items switch focused subpages through the route query, reducing scroll travel during
+  live play.
+
 ## 2026-03-31 - accepted
 
 Decision:
@@ -422,3 +442,38 @@ Consequences:
 - `.nvmrc` points local development at Node 24.
 - Same-line dependency updates can move with runtime alignment, but broad major-version upgrades
   should be handled in a dedicated pass with migration work and validation.
+
+## 2026-04-02 - accepted
+
+Decision:
+Keep authenticated users in a session-aware navigation state across marketing and app surfaces, and
+standardize player/host chrome around a compact shared header.
+
+Context:
+The previous shell treated the landing page as permanently anonymous and duplicated separate
+player/host headers across layouts. In practice that made signed-in users feel logged out when they
+ bounced to `/`, and it kept top-level navigation inconsistent between player and host routes.
+
+Consequences:
+
+- `/login` now redirects authenticated users back into the app instead of re-presenting sign-in.
+- The landing page now renders an authenticated entry CTA when a session is present.
+- Player and host surfaces now share a compact header with logo branding, scenario/state context,
+  a profile menu for `Lobby` and `Sign out`, and a separate surface-switch button when relevant.
+
+## 2026-04-02 - accepted
+
+Decision:
+Treat player section navigation as a mobile-first bottom rail on phones, while keeping inline tabs
+for larger screens.
+
+Context:
+The player surface is used primarily on mobile during live play. Keeping section navigation high in
+the page costs vertical space and makes repeated tab changes harder to reach one-handed.
+
+Consequences:
+
+- On mobile, player section navigation now stays fixed near the bottom edge for thumb access.
+- The top character card is shorter because it no longer needs to permanently carry the section
+  rail on phones.
+- Desktop and tablet retain the inline tab row near the character header.

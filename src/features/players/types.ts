@@ -1,4 +1,4 @@
-import type { EntityId } from "@/src/domain/core";
+import type { EntityId, GameStatusKey } from "@/src/domain/core";
 
 export type PlayerSummary = {
   id: EntityId;
@@ -36,7 +36,9 @@ export type PlayerDashboardView = {
   isImpersonating: boolean;
   gameId: EntityId;
   gameCode: string;
+  scenarioTitle: string;
   stage: "setup" | "act-1" | "event-1" | "act-2" | "finale" | "resolution";
+  status: GameStatusKey;
   title: string;
   scenarioSummary: string;
   eventTitle: string;
