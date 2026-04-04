@@ -11,6 +11,7 @@ export type PlayerKnowledgeFact = {
   id: EntityId;
   title: string;
   body: string;
+  subjectName?: string;
 };
 
 export type PersonalizedPlayerDetail = {
@@ -68,6 +69,8 @@ export type PlayerDashboardView = {
     publicDescription: string;
     privateDescription: string;
     actTwoBriefing?: string;
+    currentSummary: string;
+    nextSteps: string[];
   };
   goals: Array<{
     id: EntityId;

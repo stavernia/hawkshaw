@@ -23,6 +23,16 @@ describe("prototype scenario definition", () => {
     expect(PROTOTYPE_SCENARIO.clues.length).toBeGreaterThanOrEqual(18);
     expect(PROTOTYPE_SCENARIO.reveal.suspectRoleCode).toBe("marcus-reed");
     expect(PROTOTYPE_SCENARIO.reveal.nonSuspectRoleCodes).toContain("victor-hale");
+    expect(
+      PROTOTYPE_SCENARIO.roles.every(
+        (role) =>
+          !!role.stageBriefings.setup &&
+          !!role.stageBriefings["act-1"] &&
+          !!role.stageBriefings["event-1"] &&
+          !!role.stageBriefings["act-2"] &&
+          !!role.stageBriefings.finale,
+      ),
+    ).toBe(true);
   });
 });
 
@@ -52,6 +62,36 @@ describe("evaluateGoalRule", () => {
           clueCodes: [],
           decisionOutcomeKey: null,
           hasAccusation: false,
+          currentStage: "act-1",
+          goalStage: "ACT_1",
+        },
+      ),
+    ).toBe(true);
+
+    expect(
+      evaluateGoalRule(
+        { type: "possess-item-until-stage-end", itemCode: "sealed-letter" },
+        {
+          itemCodes: ["sealed-letter"],
+          clueCodes: [],
+          decisionOutcomeKey: null,
+          hasAccusation: false,
+          currentStage: "act-1",
+          goalStage: "ACT_1",
+        },
+      ),
+    ).toBe(false);
+
+    expect(
+      evaluateGoalRule(
+        { type: "possess-item-until-stage-end", itemCode: "sealed-letter" },
+        {
+          itemCodes: ["sealed-letter"],
+          clueCodes: [],
+          decisionOutcomeKey: null,
+          hasAccusation: false,
+          currentStage: "event-1",
+          goalStage: "ACT_1",
         },
       ),
     ).toBe(true);
@@ -64,6 +104,8 @@ describe("evaluateGoalRule", () => {
           clueCodes: ["b"],
           decisionOutcomeKey: null,
           hasAccusation: false,
+          currentStage: "act-1",
+          goalStage: "ACT_1",
         },
       ),
     ).toBe(true);
@@ -76,6 +118,8 @@ describe("evaluateGoalRule", () => {
           clueCodes: [],
           decisionOutcomeKey: null,
           hasAccusation: true,
+          currentStage: "finale",
+          goalStage: "ACT_2",
         },
       ),
     ).toBe(true);

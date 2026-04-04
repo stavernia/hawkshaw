@@ -9,7 +9,7 @@ import type {
 } from "@prisma/client";
 import { SITE_ROUTES } from "@/src/config/routes";
 import { prisma } from "@/src/lib/prisma";
-import { PROTOTYPE_SCENARIO, type PrototypeRoomResult } from "@/src/features/prototype/definition";
+import { PROTOTYPE_SCENARIO, type PrototypeGoalRule, type PrototypeRoomResult } from "@/src/features/prototype/definition";
 import {
   canAccuseRole,
   canSubmitAccusation,
@@ -29,7 +29,12 @@ import {
   pickJoinableSeat,
   selectNextRoomResult,
 } from "@/src/features/prototype/logic";
-import type { HostGameDetail, HostGameListItem, ScenarioSummary } from "@/src/features/games/types";
+import type {
+  HostGameDetail,
+  HostGameListItem,
+  HostScenarioView,
+  ScenarioSummary,
+} from "@/src/features/games/types";
 import type { PlayerDashboard, PlayerDashboardView } from "@/src/features/players/types";
 const GAME_STAGE = {
   SETUP: "SETUP",
@@ -247,6 +252,369 @@ function mapHostGameDetail(detail: HostGameDetailRecord): HostGameDetail {
   };
 }
 
+function stageLabelFromKey(stage: string) {
+  return stage.replace("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function stageKeyFromGameStage(stage: GameStage) {
+  return mapGameStageToKey(stage) as "setup" | "act-1" | "event-1" | "act-2" | "finale" | "resolution";
+}
+
+function buildFallbackKnowledgeFact(input: {
+  viewerRoleCode?: string;
+  subjectRoleCode?: string;
+  subjectName?: string;
+}) {
+  const subjectName = input.subjectName ?? "this player";
+  const title = "First read";
+
+  switch (input.subjectRoleCode) {
+    case "victor-hale":
+      return {
+        id: `fallback-${input.viewerRoleCode ?? "viewer"}-${input.subjectRoleCode}`,
+        title,
+        body: `${subjectName} is the center of the weekend. Whatever happens tonight will start with his authority, his decision, or the trouble gathering around him.`,
+        subjectName,
+      };
+    case "eleanor-hale":
+      return {
+        id: `fallback-${input.viewerRoleCode ?? "viewer"}-${input.subjectRoleCode}`,
+        title,
+        body: `${subjectName} knows how to manage the room and protect appearances. If she turns her attention toward someone, there is usually a reason.`,
+        subjectName,
+      };
+    case "daniel-hale":
+      return {
+        id: `fallback-${input.viewerRoleCode ?? "viewer"}-${input.subjectRoleCode}`,
+        title,
+        body: `${subjectName} carries expectation badly. If tonight starts slipping away from him, his frustration will be easy to spot.`,
+        subjectName,
+      };
+    case "marcus-reed":
+      return {
+        id: `fallback-${input.viewerRoleCode ?? "viewer"}-${input.subjectRoleCode}`,
+        title,
+        body: `${subjectName} is polished, close to Victor, and harder to read than most people in the cabin. That usually means he knows more than he is saying.`,
+        subjectName,
+      };
+    case "sofia-vale":
+      return {
+        id: `fallback-${input.viewerRoleCode ?? "viewer"}-${input.subjectRoleCode}`,
+        title,
+        body: `${subjectName} is more of an outsider than the family wants to admit. People may underestimate her, but she is close enough to notice what others miss.`,
+        subjectName,
+      };
+    case "jack-mercer":
+      return {
+        id: `fallback-${input.viewerRoleCode ?? "viewer"}-${input.subjectRoleCode}`,
+        title,
+        body: `${subjectName} does not fit the rest of the guest list, which makes his presence worth watching. He feels like someone who arrived with unfinished business.`,
+        subjectName,
+      };
+    default:
+      return {
+        id: `fallback-${input.viewerRoleCode ?? "viewer"}-${input.subjectRoleCode ?? "subject"}`,
+        title,
+        body: `${subjectName} is part of the pressure building in the cabin tonight. Even if you do not have leverage on them yet, they are worth keeping an eye on.`,
+        subjectName,
+      };
+  }
+}
+
+function buildKnownFactsForPlayer(input: {
+  viewerRoleCode?: string;
+  subjectRoleCode?: string;
+  subjectName?: string;
+  knowledgeAbout: Array<{
+    id: string;
+    title: string;
+    body: string;
+  }>;
+}) {
+  if (input.knowledgeAbout.length > 0) {
+    return input.knowledgeAbout.map((knowledge) => ({
+      id: knowledge.id,
+      title: knowledge.title,
+      body: knowledge.body,
+      subjectName: input.subjectName,
+    }));
+  }
+
+  return [
+    buildFallbackKnowledgeFact({
+      viewerRoleCode: input.viewerRoleCode,
+      subjectRoleCode: input.subjectRoleCode,
+      subjectName: input.subjectName,
+    }),
+  ];
+}
+
+function describeGoalRule(rule: PrototypeGoalRule) {
+  switch (rule.type) {
+    case "possess-item":
+      return `Possess item: ${rule.itemCode}`;
+    case "possess-item-until-stage-end":
+      return `Possess item through stage end: ${rule.itemCode}`;
+    case "gain-clue":
+      return `Gain clue: ${rule.clueCode}`;
+    case "gain-any-clue":
+      return `Gain any of: ${rule.clueCodes.join(", ")}`;
+    case "decision-branch":
+      return `Decision branch: ${rule.outcomeKey}`;
+    case "submit-accusation":
+      return "Submit accusation";
+  }
+}
+
+function countResultsForStage(results: PrototypeRoomResult[], stage: "act-1" | "act-2") {
+  return results.filter((result) => !result.stage || result.stage === stage).length;
+}
+
+function buildHostScenarioView(input: {
+  branchLabel?: string;
+  participants: HostGameDetail["participants"];
+}): HostScenarioView {
+  const roleByCode = new Map(PROTOTYPE_SCENARIO.roles.map((role) => [role.code, role]));
+  const clueByCode = new Map(PROTOTYPE_SCENARIO.clues.map((clue) => [clue.code, clue]));
+  const itemByCode = new Map(PROTOTYPE_SCENARIO.items.map((item) => [item.code, item]));
+  const goalByCode = new Map(PROTOTYPE_SCENARIO.goals.map((goal) => [goal.code, goal]));
+  const participantByRoleCode = new Map(input.participants.map((participant) => [participant.roleCode, participant]));
+
+  const stages = (["setup", "act-1", "event-1", "act-2", "finale", "resolution"] as const).map((stageKey) => {
+    const mechanics = PROTOTYPE_SCENARIO.stageMechanics[stageKey];
+    const actGoalCount =
+      stageKey === "act-1"
+        ? PROTOTYPE_SCENARIO.goals.filter((goal) => goal.stage === "ACT_1").length
+        : stageKey === "act-2"
+          ? PROTOTYPE_SCENARIO.goals.filter((goal) => goal.stage === "ACT_2").length
+          : 0;
+    const selectedBranchCodes = input.branchLabel
+      ? (PROTOTYPE_SCENARIO.eventAwards.branchClueCodes[input.branchLabel] ?? [])
+      : [];
+    const defaultBranchClueCount =
+      input.branchLabel
+        ? selectedBranchCodes.length
+        : Math.max(0, ...Object.values(PROTOTYPE_SCENARIO.eventAwards.branchClueCodes).map((codes) => codes.length));
+    const eventClueCount =
+      stageKey === "event-1"
+        ? PROTOTYPE_SCENARIO.eventAwards.everyoneClueCodes.length +
+          defaultBranchClueCount
+        : 0;
+
+    return {
+      key: stageKey,
+      label: stageLabelFromKey(stageKey),
+      summary: PROTOTYPE_SCENARIO.stageContent[stageKey].summary,
+      eventTitle: PROTOTYPE_SCENARIO.stageContent[stageKey].eventTitle,
+      eventDescription: PROTOTYPE_SCENARIO.stageContent[stageKey].eventDescription,
+      mechanics,
+      actGoalCount,
+      eventClueCount,
+    };
+  });
+
+  const roles = PROTOTYPE_SCENARIO.roles.map((role) => {
+    const participant = participantByRoleCode.get(role.code);
+    const actOneGoals = PROTOTYPE_SCENARIO.goals.filter((goal) => goal.roleCode === role.code && goal.stage === "ACT_1");
+    const actTwoGoals = PROTOTYPE_SCENARIO.goals.filter((goal) => goal.roleCode === role.code && goal.stage === "ACT_2");
+
+    return {
+      roleCode: role.code,
+      seatLabel: `Seat ${role.slotNumber}`,
+      characterName: role.characterName,
+      characterTitle: role.characterTitle,
+      assignedPlayerLabel: participant?.playerLabel,
+      publicDescription: role.publicDescription,
+      privateDescription: role.privateDescription,
+      actTwoBriefing: role.actTwoBriefing,
+      isDecisionOwner: PROTOTYPE_SCENARIO.decision.decisionMakerRoleCode === role.code,
+      startingClues: role.startingClueCodes.map((code) => clueByCode.get(code)?.title ?? code),
+      startingItems: role.startingItemCodes.map((code) => itemByCode.get(code)?.label ?? code),
+      knowledge: role.knowledge.map((entry) => ({
+        subjectName: roleByCode.get(entry.subjectRoleCode)?.characterName ?? entry.subjectRoleCode,
+        title: entry.title,
+        body: entry.body,
+      })),
+      actOneGoals: actOneGoals.map((goal) => goal.title),
+      actTwoGoals: actTwoGoals.map((goal) => goal.title),
+    };
+  });
+
+  const secrets = PROTOTYPE_SCENARIO.secrets.map((secret) => ({
+    code: secret.code,
+    title: secret.title,
+    truth: secret.truth,
+    clueCodes: secret.clueCodes,
+    clueTitles: secret.clueCodes.map((code) => clueByCode.get(code)?.title ?? code),
+  }));
+
+  const clues = PROTOTYPE_SCENARIO.clues.map((clue) => ({
+    code: clue.code,
+    title: clue.title,
+    body: clue.body,
+    secretTitles: (clue.secretCodes ?? []).map((code) => PROTOTYPE_SCENARIO.secrets.find((secret) => secret.code === code)?.title ?? code),
+    sourceHints: clue.sourceHints ?? [],
+    reachableRoleNames: (clue.reachableByRoleCodes ?? []).map((code) => roleByCode.get(code)?.characterName ?? code),
+  }));
+
+  const items = PROTOTYPE_SCENARIO.items.map((item) => ({
+    code: item.code,
+    label: item.label,
+    description: item.description,
+    flags: [
+      item.isStealable === false ? null : "Stealable",
+      item.isTradeable === false ? null : "Tradeable",
+      item.isPlantable === false ? null : "Plantable",
+    ].filter((flag): flag is string => !!flag),
+    startingOwnerNames: PROTOTYPE_SCENARIO.roles
+      .filter((role) => role.startingItemCodes.includes(item.code))
+      .map((role) => role.characterName),
+    usedByGoalTitles: (item.usedByGoalCodes ?? []).map((code) => goalByCode.get(code)?.title ?? code),
+    sourceHints: item.sourceHints ?? [],
+  }));
+
+  const rooms = PROTOTYPE_SCENARIO.rooms.map((room) => ({
+    code: room.code,
+    name: room.name,
+    description: room.description,
+    actOneSearchCount: countResultsForStage(room.searchResults, "act-1"),
+    actOneEavesdropCount: countResultsForStage(room.eavesdropResults, "act-1"),
+    actTwoSearchCount: countResultsForStage(room.searchResults, "act-2"),
+    actTwoEavesdropCount: countResultsForStage(room.eavesdropResults, "act-2"),
+  }));
+
+  const goalPaths = PROTOTYPE_SCENARIO.goals.map((goal) => {
+    const dependencyClueTitles = (goal.dependsOnClueCodes ?? []).map((code) => clueByCode.get(code)?.title ?? code);
+    const dependencyItemLabels = (goal.dependsOnItemCodes ?? []).map((code) => itemByCode.get(code)?.label ?? code);
+    const softContactNames = (goal.softContacts ?? []).map((code) => roleByCode.get(code)?.characterName ?? code);
+
+    let warning: string | undefined;
+    if (!goal.authorPath?.length && dependencyClueTitles.length === 0 && dependencyItemLabels.length === 0) {
+      warning = "No authored path notes";
+    } else if ((goal.authorPath?.length ?? 0) <= 1 && dependencyClueTitles.length + dependencyItemLabels.length <= 1) {
+      warning = "Only one obvious authored route";
+    }
+
+    return {
+      code: goal.code,
+      roleName: roleByCode.get(goal.roleCode)?.characterName ?? goal.roleCode,
+      stage: stageKeyFromGameStage(goal.stage),
+      title: goal.title,
+      description: goal.description,
+      ruleLabel: describeGoalRule(goal.rule),
+      authorPath: goal.authorPath ?? [],
+      dependencyClueTitles,
+      dependencyItemLabels,
+      softContactNames,
+      warning,
+    };
+  });
+
+  const warnings = [
+    ...PROTOTYPE_SCENARIO.clues
+      .filter((clue) => !clue.secretCodes || clue.secretCodes.length === 0)
+      .map((clue) => ({
+        code: `clue-no-secret-${clue.code}`,
+        title: "Clue is not mapped to a secret",
+        detail: `${clue.title} does not list any supporting secret codes.`,
+      })),
+    ...PROTOTYPE_SCENARIO.secrets
+      .filter((secret) => secret.clueCodes.length < 2)
+      .map((secret) => ({
+        code: `secret-thin-${secret.code}`,
+        title: "Secret has thin support",
+        detail: `${secret.title} has fewer than two supporting clues.`,
+      })),
+    ...PROTOTYPE_SCENARIO.goals
+      .filter((goal) => !goal.authorPath?.length && !(goal.dependsOnClueCodes?.length || goal.dependsOnItemCodes?.length))
+      .map((goal) => ({
+        code: `goal-no-path-${goal.code}`,
+        title: "Goal lacks path guidance",
+        detail: `${goal.title} has no authored path steps or dependency hints.`,
+      })),
+    ...PROTOTYPE_SCENARIO.goals
+      .flatMap((goal) =>
+        (goal.dependsOnItemCodes ?? [])
+          .filter((itemCode) => {
+            const item = itemByCode.get(itemCode);
+            const hasStartingOwner = PROTOTYPE_SCENARIO.roles.some((role) => role.startingItemCodes.includes(itemCode));
+            return !!item && !hasStartingOwner && !(item.sourceHints?.length);
+          })
+          .map((itemCode) => ({
+            code: `goal-item-unreachable-${goal.code}-${itemCode}`,
+            title: "Goal depends on a weakly sourced item",
+            detail: `${goal.title} depends on ${itemByCode.get(itemCode)?.label ?? itemCode}, but that item has no starting owner or source hint.`,
+          })),
+      ),
+    ...PROTOTYPE_SCENARIO.items
+      .filter((item) => (item.usedByGoalCodes?.length ?? 0) > 0)
+      .filter((item) => {
+        const hasStartingOwner = PROTOTYPE_SCENARIO.roles.some((role) => role.startingItemCodes.includes(item.code));
+        return !hasStartingOwner && !(item.sourceHints?.length);
+      })
+      .map((item) => ({
+        code: `item-weak-source-${item.code}`,
+        title: "Item is used but weakly sourced",
+        detail: `${item.label} is tied to goals but has no starting owner or source hint.`,
+      })),
+    ...PROTOTYPE_SCENARIO.rooms.flatMap((room) => {
+      const warningsForRoom = [];
+      if (PROTOTYPE_SCENARIO.stageMechanics["act-1"].roomActions && countResultsForStage(room.searchResults, "act-1") === 0) {
+        warningsForRoom.push({
+          code: `room-no-act1-search-${room.code}`,
+          title: "Room lacks Act 1 search result",
+          detail: `${room.name} has no searchable Act 1 result.`,
+        });
+      }
+      if (PROTOTYPE_SCENARIO.stageMechanics["act-1"].roomActions && countResultsForStage(room.eavesdropResults, "act-1") === 0) {
+        warningsForRoom.push({
+          code: `room-no-act1-eavesdrop-${room.code}`,
+          title: "Room lacks Act 1 eavesdrop result",
+          detail: `${room.name} has no eavesdrop Act 1 result.`,
+        });
+      }
+      if (PROTOTYPE_SCENARIO.stageMechanics["act-2"].roomActions && countResultsForStage(room.searchResults, "act-2") === 0) {
+        warningsForRoom.push({
+          code: `room-no-act2-search-${room.code}`,
+          title: "Room lacks Act 2 search result",
+          detail: `${room.name} has no searchable Act 2 result.`,
+        });
+      }
+      if (PROTOTYPE_SCENARIO.stageMechanics["act-2"].roomActions && countResultsForStage(room.eavesdropResults, "act-2") === 0) {
+        warningsForRoom.push({
+          code: `room-no-act2-eavesdrop-${room.code}`,
+          title: "Room lacks Act 2 eavesdrop result",
+          detail: `${room.name} has no eavesdrop Act 2 result.`,
+        });
+      }
+      return warningsForRoom;
+    }),
+  ];
+
+  return {
+    title: PROTOTYPE_SCENARIO.title,
+    slug: PROTOTYPE_SCENARIO.slug,
+    branchLabel: input.branchLabel,
+    stats: {
+      playerCount: PROTOTYPE_SCENARIO.playerCount,
+      roomCount: PROTOTYPE_SCENARIO.rooms.length,
+      clueCount: PROTOTYPE_SCENARIO.clues.length,
+      itemCount: PROTOTYPE_SCENARIO.items.length,
+      secretCount: PROTOTYPE_SCENARIO.secrets.length,
+      goalCount: PROTOTYPE_SCENARIO.goals.length,
+      warningCount: warnings.length,
+    },
+    stages,
+    roles,
+    secrets,
+    clues,
+    items,
+    rooms,
+    goalPaths,
+    warnings,
+  };
+}
+
 async function requireOwnedGame(
   db: Prisma.TransactionClient | typeof prisma,
   gameId: string,
@@ -351,6 +719,8 @@ async function recomputeParticipantGoals(db: GoalClient, participantId: string) 
       clueCodes: participant.clues.map((clue) => clue.scenarioClue.code),
       decisionOutcomeKey: participant.game.decisionOutcomeKey,
       hasAccusation: participant.accusations.length > 0,
+      currentStage: mapGameStageToKey(participant.game.stage),
+      goalStage: goalState.scenarioGoal.stage,
     });
 
     const nextStatus = isComplete ? GOAL_STATUS.COMPLETED : GOAL_STATUS.ACTIVE;
@@ -836,6 +1206,22 @@ export async function getHostGameDetailForGame(
   return mapHostGameDetail(detail as HostGameDetailRecord);
 }
 
+export async function getHostScenarioViewForGame(
+  createdByUserId: string,
+  gameId: string,
+): Promise<HostScenarioView | null> {
+  const hostGame = await getHostGameDetailForGame(createdByUserId, gameId);
+
+  if (!hostGame) {
+    return null;
+  }
+
+  return buildHostScenarioView({
+    branchLabel: hostGame.branchLabel,
+    participants: hostGame.participants,
+  });
+}
+
 export async function joinGameWithUser(
   code: string,
   user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null },
@@ -1167,6 +1553,7 @@ async function buildPlayerDashboardView(input: {
     nonSuspectRoleCodes?: string[];
   };
   const stageKey = mapGameStageToKey(participant.game.stage);
+  const roleBriefingStageKey = stageKey === "resolution" ? "finale" : stageKey;
   const stageContent = PROTOTYPE_SCENARIO.stageContent[stageKey];
   const accusation = participant.accusations[0];
   const goalPoints = participant.goals
@@ -1244,6 +1631,11 @@ async function buildPlayerDashboardView(input: {
           publicDescription: participant.scenarioRole.publicDescription,
           privateDescription: participant.scenarioRole.privateDescription,
           actTwoBriefing: isEventOneOrLater(stageKey) ? participant.scenarioRole.actTwoBriefing ?? undefined : undefined,
+          currentSummary:
+            PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]?.summary ??
+            participant.scenarioRole.privateDescription,
+          nextSteps:
+            PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]?.nextSteps ?? [],
         }
       : undefined,
     goals: participant.goals
@@ -1281,11 +1673,12 @@ async function buildPlayerDashboardView(input: {
       characterName: player.scenarioRole?.characterName,
       characterTitle: player.scenarioRole?.characterTitle,
       publicDescription: player.scenarioRole?.publicDescription,
-      knownFacts: player.knowledgeAbout.map((knowledge) => ({
-        id: knowledge.id,
-        title: knowledge.title,
-        body: knowledge.body,
-      })),
+      knownFacts: buildKnownFactsForPlayer({
+        viewerRoleCode: participant.scenarioRole?.code,
+        subjectRoleCode: player.scenarioRole?.code,
+        subjectName: player.scenarioRole?.characterName,
+        knowledgeAbout: player.knowledgeAbout,
+      }),
     })),
     accusationTargets: accusationTargets.map((player) => ({
       id: player.id,
@@ -1932,8 +2325,8 @@ export async function submitDecision(userId: string, outcomeKey: string, actingP
       gameId: participant.gameId,
       participantId: participant.id,
       actionType: ACTION_TYPE.DECISION_SUBMITTED,
-       stage: participant.game.stage,
-      summary: `The ledger decision is now ${outcomeKey}.`,
+      stage: participant.game.stage,
+      summary: `Daniel's public posture is now ${outcomeKey}.`,
       detailsJson: { outcomeKey },
     });
 

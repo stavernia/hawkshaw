@@ -146,6 +146,45 @@ Consequences:
 - Host menu items switch focused subpages through the route query, reducing scroll travel during
   live play.
 
+## 2026-04-04 - accepted
+
+Decision:
+Ensure every player starts with at least a minimal private read on every other character, using
+fallback relationship notes whenever authored knowledge entries are missing.
+
+Context:
+The player dashboard was surfacing empty-state copy like "you have no private read on this
+character yet" for some character pairs. That made the scenario feel incomplete at first open and
+worked against Hawkshaw's core job of orienting players with usable social context from the start.
+
+Consequences:
+
+- The player dashboard service now synthesizes one lightweight "first read" per missing
+  viewer-to-subject relationship.
+- Explicit authored private knowledge still takes precedence over the fallback text.
+- This remains a player-facing presentation rule only; it does not add new persisted knowledge or
+  change clue/goal mechanics.
+
+## 2026-04-04 - accepted
+
+Decision:
+Keep Act 1 character goals live at scenario start by avoiding pre-solved starting clues, and widen
+ early sabotage suspicion so Jack's blackout is not readable only through one narrow path.
+
+Context:
+The first full scenario review showed that some players began Act 1 with one of their own central
+ goals already satisfied, which undercut the opening play loop. It also showed that the blackout
+ thread was too dependent on Eleanor or Jack reaching the Basement before other players could form
+ any meaningful suspicion.
+
+Consequences:
+
+- Eleanor and Sofia now start with softer orientation clues rather than direct answers to their
+  own Act 1 investigation goals.
+- Daniel's dagger goal text now matches the actual scoring condition instead of implying an
+  unsupported alternate success path.
+- A broader Act 1 clue route now points toward Jack's suspicious interest in the blackout timing.
+
 ## 2026-03-31 - accepted
 
 Decision:
@@ -297,6 +336,27 @@ Consequences:
 - Act 2 role briefings only appear once the event has happened.
 - The Daniel decision is limited to Act 1, and accusations are limited to the finale both in the UI
   and server-side validation.
+
+## 2026-04-04 - accepted
+
+Decision:
+Write player overview and orientation content from the current character's perspective, with
+explicit stage-by-stage role briefings instead of neutral scenario copy.
+
+Context:
+The player surface was still relying too heavily on generic scenario text and private role
+descriptions. That made setup and Act 1 feel under-oriented, and it led to phrasing that implied
+future plot knowledge instead of telling a player what they understand right now and what they
+should do next.
+
+Consequences:
+
+- Each role now carries stage-specific briefings that explain the player's current situation and
+  next steps in setup, Act 1, Event 1, Act 2, and finale.
+- The Overview tab now foregrounds who the player is, what they already know, what they know about
+  others, and what they should do now.
+- Player-facing copy should avoid implying future certainty unless that information has already been
+  revealed in the game state.
 
 Context:
 Dynamic page navigations were still paying a live Supabase Auth network request on each render.
