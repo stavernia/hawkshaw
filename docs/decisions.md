@@ -259,6 +259,45 @@ Decision:
 Use session-based Supabase reads for page-level auth checks, while keeping `getUser()` for
 authoritative server actions.
 
+## 2026-04-02 - accepted
+
+Decision:
+Represent prototype secrets as authored scenario metadata and keep Victor playable after death by
+excluding him from accusation targets rather than introducing a full life-state system.
+
+Context:
+The mountain-cabin prototype needs a sharp distinction between hidden scenario truths and
+player-facing clues, but it still needs to stay lightweight enough to ship as seeded content this
+weekend. The same prototype also needs Victor to continue supplying perspective in Act 2 without
+making him a valid suspect after the murder.
+
+Consequences:
+
+- Scenario definitions now carry author-only secret metadata that documents the intended truth and
+  clue mapping without adding new Prisma tables.
+- Player-facing clue and action systems stay unchanged while gaining richer authored content.
+- Finale accusation targets now filter out Victor after Event 1 instead of relying on a new
+  alive/dead role-state model.
+
+## 2026-04-03 - accepted
+
+Decision:
+Gate player-facing narrative and mechanics by stage instead of showing future event or finale
+information during setup and Act 1.
+
+Context:
+The overview surface was showing the murder-event copy before the murder had happened, Act 2 role
+briefings could appear during setup, and finale-only mechanics like accusations were visible too
+early. That breaks the core live-mystery requirement that information unlock over time.
+
+Consequences:
+
+- Player overview copy is now stage-aware, with separate setup, Act 1, Event 1, Act 2, finale, and
+  resolution text.
+- Act 2 role briefings only appear once the event has happened.
+- The Daniel decision is limited to Act 1, and accusations are limited to the finale both in the UI
+  and server-side validation.
+
 Context:
 Dynamic page navigations were still paying a live Supabase Auth network request on each render.
 That created visible navigation latency and occasional auth fetch timeouts on simple hops like room

@@ -27,7 +27,7 @@ export function AppShellHeader({
   stageLabel,
 }: AppShellHeaderProps) {
   return (
-    <header className="app-surface rounded-[1.5rem] border border-white/70 px-3 py-3 sm:px-5 sm:py-4">
+    <header className="app-surface relative z-50 rounded-[1.5rem] border border-white/70 px-3 py-3 sm:px-5 sm:py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link className="shrink-0" href={SITE_ROUTES.marketingHome}>
@@ -55,11 +55,11 @@ export function AppShellHeader({
           </Link>
         ) : null}
 
-        <details className="group relative">
+        <details className="group relative z-50">
           <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-input bg-background/80 text-sm font-semibold text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground sm:h-10 sm:w-10">
             {getInitial(userLabel)}
           </summary>
-          <div className="absolute right-0 z-20 mt-2 w-52 rounded-2xl border border-white/70 bg-background/95 p-2 shadow-[0_18px_48px_-24px_rgba(18,27,33,0.45)] backdrop-blur sm:w-56">
+          <div className="absolute right-0 z-[60] mt-2 w-52 rounded-2xl border border-white/70 bg-background/95 p-2 shadow-[0_18px_48px_-24px_rgba(18,27,33,0.45)] backdrop-blur sm:w-56">
             <div className="border-b border-border px-3 py-2">
               <p className="truncate text-sm font-medium text-foreground">{userLabel}</p>
               {userSubLabel ? <p className="truncate text-xs text-muted-foreground">{userSubLabel}</p> : null}

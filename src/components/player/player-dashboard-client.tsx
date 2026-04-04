@@ -457,37 +457,43 @@ export function PlayerDashboardClient({
               <CardTitle>Accusation</CardTitle>
             </CardHeader>
             <CardContent>
-              <form action={submitAccusationAction} className="grid gap-4">
-                <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
-                <input name="gameId" type="hidden" value={currentDashboard.gameId} />
-                <div className="grid gap-2">
-                  <Label htmlFor="accuse-suspect">Suspect</Label>
-                  <select
-                    className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
-                    defaultValue={currentDashboard.accusation?.suspectParticipantId ?? ""}
-                    id="accuse-suspect"
-                    name="suspectParticipantId"
-                  >
-                    <option value="">Choose a suspect</option>
-                    {currentDashboard.players.map((player) => (
-                      <option key={player.id} value={player.id}>
-                        {player.characterName ?? player.actorName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="accuse-motive">Motive</Label>
-                  <Input defaultValue={currentDashboard.accusation?.motive ?? ""} id="accuse-motive" name="motive" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="accuse-means">Means</Label>
-                  <Input defaultValue={currentDashboard.accusation?.means ?? ""} id="accuse-means" name="means" />
-                </div>
-                <Button size="lg" type="submit">
-                  Submit Accusation
-                </Button>
-              </form>
+              {currentDashboard.canSubmitAccusation ? (
+                <form action={submitAccusationAction} className="grid gap-4">
+                  <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
+                  <input name="gameId" type="hidden" value={currentDashboard.gameId} />
+                  <div className="grid gap-2">
+                    <Label htmlFor="accuse-suspect">Suspect</Label>
+                    <select
+                      className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
+                      defaultValue={currentDashboard.accusation?.suspectParticipantId ?? ""}
+                      id="accuse-suspect"
+                      name="suspectParticipantId"
+                    >
+                      <option value="">Choose a suspect</option>
+                      {currentDashboard.accusationTargets.map((player) => (
+                        <option key={player.id} value={player.id}>
+                          {player.characterName ?? player.actorName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="accuse-motive">Motive</Label>
+                    <Input defaultValue={currentDashboard.accusation?.motive ?? ""} id="accuse-motive" name="motive" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="accuse-means">Means</Label>
+                    <Input defaultValue={currentDashboard.accusation?.means ?? ""} id="accuse-means" name="means" />
+                  </div>
+                  <Button size="lg" type="submit">
+                    Submit Accusation
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Final accusations are locked until the host starts the Finale.
+                </p>
+              )}
             </CardContent>
           </Card>
 

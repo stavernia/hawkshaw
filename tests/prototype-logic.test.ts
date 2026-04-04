@@ -1,21 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { PROTOTYPE_SCENARIO } from "../src/features/prototype/definition";
 import {
+  canAccuseRole,
+  canSubmitAccusation,
+  canUseDecision,
   canUseLiveActions,
   computeRevealScore,
   deriveSeatSwap,
   evaluateGoalRule,
+  getEventClueCodes,
   getActTwoGoalStatus,
   getSetupGoalStatus,
+  isEventOneOrLater,
   pickJoinableSeat,
   selectNextRoomResult,
 } from "../src/features/prototype/logic";
 
 describe("prototype scenario definition", () => {
-  it("ships a six-player seeded scenario", () => {
+  it("ships a six-player mountain-cabin seeded scenario", () => {
     expect(PROTOTYPE_SCENARIO.roles).toHaveLength(6);
-    expect(PROTOTYPE_SCENARIO.clues.length).toBeGreaterThanOrEqual(10);
-    expect(PROTOTYPE_SCENARIO.rooms.length).toBeGreaterThanOrEqual(4);
+    expect(PROTOTYPE_SCENARIO.rooms).toHaveLength(5);
+    expect(PROTOTYPE_SCENARIO.clues.length).toBeGreaterThanOrEqual(18);
+    expect(PROTOTYPE_SCENARIO.reveal.suspectRoleCode).toBe("marcus-reed");
+    expect(PROTOTYPE_SCENARIO.reveal.nonSuspectRoleCodes).toContain("victor-hale");
   });
 });
 
@@ -36,13 +43,25 @@ describe("selectNextRoomResult", () => {
 });
 
 describe("evaluateGoalRule", () => {
-  it("completes possession and accusation rules correctly", () => {
+  it("completes possession, multi-clue, and accusation rules correctly", () => {
     expect(
       evaluateGoalRule(
         { type: "possess-item", itemCode: "sealed-letter" },
         {
           itemCodes: ["sealed-letter"],
           clueCodes: [],
+          decisionOutcomeKey: null,
+          hasAccusation: false,
+        },
+      ),
+    ).toBe(true);
+
+    expect(
+      evaluateGoalRule(
+        { type: "gain-any-clue", clueCodes: ["a", "b", "c"] },
+        {
+          itemCodes: [],
+          clueCodes: ["b"],
           decisionOutcomeKey: null,
           hasAccusation: false,
         },
@@ -63,11 +82,35 @@ describe("evaluateGoalRule", () => {
   });
 });
 
+describe("event clue helpers", () => {
+  it("merges shared and branch event clues", () => {
+    expect(
+      getEventClueCodes({
+        everyoneClueCodes: ["shared-a", "shared-b"],
+        branchClueCodes: {
+          alpha: ["branch-a"],
+          beta: ["branch-b"],
+        },
+        branchKey: "beta",
+      }),
+    ).toEqual(["shared-a", "shared-b", "branch-b"]);
+  });
+});
+
 describe("stage helpers", () => {
   it("freezes app actions during Event 1 and enables them during active acts", () => {
     expect(canUseLiveActions("act-1")).toBe(true);
     expect(canUseLiveActions("event-1")).toBe(false);
     expect(canUseLiveActions("act-2")).toBe(true);
+  });
+
+  it("only exposes future-stage mechanics when their stage is active", () => {
+    expect(isEventOneOrLater("setup")).toBe(false);
+    expect(isEventOneOrLater("event-1")).toBe(true);
+    expect(canUseDecision("setup")).toBe(false);
+    expect(canUseDecision("act-1")).toBe(true);
+    expect(canSubmitAccusation("act-2")).toBe(false);
+    expect(canSubmitAccusation("finale")).toBe(true);
   });
 
   it("tracks goal activation by setup and act two windows", () => {
@@ -77,6 +120,24 @@ describe("stage helpers", () => {
     expect(getActTwoGoalStatus("ACT_2", "FAILED")).toBe("ACTIVE");
     expect(getActTwoGoalStatus("ACT_1", "COMPLETED")).toBe("COMPLETED");
     expect(getActTwoGoalStatus("ACT_1", "FAILED")).toBe("FAILED");
+  });
+
+  it("removes non-suspects from accusation targets after the murder", () => {
+    expect(
+      canAccuseRole({
+        stage: "act-1",
+        roleCode: "victor-hale",
+        nonSuspectRoleCodes: ["victor-hale"],
+      }),
+    ).toBe(true);
+
+    expect(
+      canAccuseRole({
+        stage: "finale",
+        roleCode: "victor-hale",
+        nonSuspectRoleCodes: ["victor-hale"],
+      }),
+    ).toBe(false);
   });
 });
 

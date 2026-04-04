@@ -11,12 +11,17 @@ import { SITE_ROUTES } from "@/src/config/routes";
 import { prisma } from "@/src/lib/prisma";
 import { PROTOTYPE_SCENARIO, type PrototypeRoomResult } from "@/src/features/prototype/definition";
 import {
+  canAccuseRole,
+  canSubmitAccusation,
+  canUseDecision,
   canUseLiveActions,
   computeRevealScore,
   deriveSeatSwap,
   evaluateGoalRule,
+  getEventClueCodes,
   getActTwoGoalStatus,
   getSetupGoalStatus,
+  isEventOneOrLater,
   mapActionTypeToLabel,
   mapGameStageToKey,
   mapGameStatusToKey,
@@ -1159,7 +1164,10 @@ async function buildPlayerDashboardView(input: {
     motive: string;
     means: string;
     summary: string;
+    nonSuspectRoleCodes?: string[];
   };
+  const stageKey = mapGameStageToKey(participant.game.stage);
+  const stageContent = PROTOTYPE_SCENARIO.stageContent[stageKey];
   const accusation = participant.accusations[0];
   const goalPoints = participant.goals
     .filter((goal) => goal.status === GOAL_STATUS.COMPLETED)
@@ -1191,6 +1199,13 @@ async function buildPlayerDashboardView(input: {
     (trade) => trade.responderParticipantId === participant.id && trade.status === TRADE_STATUS.PENDING,
   );
   const pendingOutgoingTrades = tradeProposals.filter((trade) => trade.proposerParticipantId === participant.id);
+  const accusationTargets = players.filter((player) =>
+    canAccuseRole({
+      stage: mapGameStageToKey(participant.game.stage),
+      roleCode: player.scenarioRole?.code,
+      nonSuspectRoleCodes: revealPayload.nonSuspectRoleCodes,
+    }),
+  );
 
   return {
     canControlCharacters,
@@ -1198,12 +1213,12 @@ async function buildPlayerDashboardView(input: {
     gameId: participant.gameId,
     gameCode: participant.game.code,
     scenarioTitle: participant.game.scenario.title,
-    stage: mapGameStageToKey(participant.game.stage),
+    stage: stageKey,
     status: mapGameStatusToKey(participant.game.status),
     title: participant.game.title,
-    scenarioSummary: participant.game.scenario.summary,
-    eventTitle: participant.game.scenario.eventTitle,
-    eventDescription: participant.game.scenario.eventDescription,
+    scenarioSummary: stageContent.summary,
+    eventTitle: stageContent.eventTitle,
+    eventDescription: stageContent.eventDescription,
     participant: {
       id: participant.id,
       actorName: playerLabelFromSeat(participant),
@@ -1228,7 +1243,7 @@ async function buildPlayerDashboardView(input: {
           characterTitle: participant.scenarioRole.characterTitle,
           publicDescription: participant.scenarioRole.publicDescription,
           privateDescription: participant.scenarioRole.privateDescription,
-          actTwoBriefing: participant.game.stage !== GAME_STAGE.ACT_1 ? participant.scenarioRole.actTwoBriefing ?? undefined : undefined,
+          actTwoBriefing: isEventOneOrLater(stageKey) ? participant.scenarioRole.actTwoBriefing ?? undefined : undefined,
         }
       : undefined,
     goals: participant.goals
@@ -1262,6 +1277,7 @@ async function buildPlayerDashboardView(input: {
     players: players.map((player) => ({
       id: player.id,
       actorName: playerLabelFromSeat(player),
+      roleCode: player.scenarioRole?.code,
       characterName: player.scenarioRole?.characterName,
       characterTitle: player.scenarioRole?.characterTitle,
       publicDescription: player.scenarioRole?.publicDescription,
@@ -1270,6 +1286,13 @@ async function buildPlayerDashboardView(input: {
         title: knowledge.title,
         body: knowledge.body,
       })),
+    })),
+    accusationTargets: accusationTargets.map((player) => ({
+      id: player.id,
+      actorName: playerLabelFromSeat(player),
+      roleCode: player.scenarioRole?.code,
+      characterName: player.scenarioRole?.characterName,
+      characterTitle: player.scenarioRole?.characterTitle,
     })),
     pendingIncomingTrades: pendingIncomingTrades.map((trade) => ({
       id: trade.id,
@@ -1294,7 +1317,10 @@ async function buildPlayerDashboardView(input: {
           means: accusation.means,
         }
       : undefined,
-    decision: participant.game.scenario.decision && participant.scenarioRole?.id === participant.game.scenario.decision.decisionMakerRoleId
+    decision:
+      canUseDecision(stageKey) &&
+      participant.game.scenario.decision &&
+      participant.scenarioRole?.id === participant.game.scenario.decision.decisionMakerRoleId
       ? {
           title: participant.game.scenario.decision.title,
           description: participant.game.scenario.decision.description,
@@ -1305,6 +1331,7 @@ async function buildPlayerDashboardView(input: {
           selectedOutcomeKey: participant.game.decisionOutcomeKey ?? undefined,
         }
       : undefined,
+    canSubmitAccusation: canSubmitAccusation(stageKey),
     actionLog: actionLog.map((entry) => ({
       id: entry.id,
       actionType: mapActionTypeToLabel(entry.actionType),
@@ -1721,14 +1748,22 @@ export async function triggerEventPhaseTwo(gameId: string, createdByUserId: stri
 
     const clueByCode = new Map(game.scenario.clues.map((clue) => [clue.code, clue.id]));
     const branchKey = game.decisionOutcomeKey ?? PROTOTYPE_SCENARIO.decision.optionA.outcomeKey;
+    const awardedClueCodes = getEventClueCodes({
+      everyoneClueCodes: PROTOTYPE_SCENARIO.eventAwards.everyoneClueCodes,
+      branchClueCodes: PROTOTYPE_SCENARIO.eventAwards.branchClueCodes,
+      branchKey,
+    });
 
     for (const participant of game.participants) {
-      for (const clueCode of PROTOTYPE_SCENARIO.eventAwards.everyoneClueCodes) {
-        await ensureClue(tx, participant.id, clueByCode.get(clueCode)!, CLUE_VISIBILITY_SOURCE.EVENT_UPDATE);
-      }
-
-      for (const clueCode of PROTOTYPE_SCENARIO.eventAwards.branchClueCodes[branchKey] ?? []) {
-        await ensureClue(tx, participant.id, clueByCode.get(clueCode)!, CLUE_VISIBILITY_SOURCE.DECISION_OUTCOME);
+      for (const clueCode of awardedClueCodes) {
+        await ensureClue(
+          tx,
+          participant.id,
+          clueByCode.get(clueCode)!,
+          PROTOTYPE_SCENARIO.eventAwards.branchClueCodes[branchKey]?.includes(clueCode)
+            ? CLUE_VISIBILITY_SOURCE.DECISION_OUTCOME
+            : CLUE_VISIBILITY_SOURCE.EVENT_UPDATE,
+        );
       }
     }
 
@@ -1872,6 +1907,10 @@ export async function submitDecision(userId: string, outcomeKey: string, actingP
     throw new Error("No active participant found.");
   }
 
+  if (!canUseDecision(mapGameStageToKey(participant.game.stage))) {
+    throw new Error("This decision is only available during Act 1.");
+  }
+
   const decision = participant.game.scenario.decision;
   if (!decision || participant.scenarioRoleId !== decision.decisionMakerRoleId) {
     throw new Error("You are not the decision maker.");
@@ -1911,6 +1950,36 @@ export async function submitAccusation(userId: string, input: {
 
   if (!participant) {
     throw new Error("No active participant found.");
+  }
+
+  if (!canSubmitAccusation(mapGameStageToKey(participant.game.stage))) {
+    throw new Error("Accusations only open during the finale.");
+  }
+
+  const revealPayload = participant.game.scenario.revealPayloadJson as {
+    nonSuspectRoleCodes?: string[];
+  };
+
+  if (input.suspectParticipantId) {
+    const target = await prisma.gameParticipant.findFirstOrThrow({
+      where: {
+        id: input.suspectParticipantId,
+        gameId: participant.gameId,
+      },
+      include: {
+        scenarioRole: true,
+      },
+    });
+
+    if (
+      !canAccuseRole({
+        stage: mapGameStageToKey(participant.game.stage),
+        roleCode: target.scenarioRole?.code,
+        nonSuspectRoleCodes: revealPayload.nonSuspectRoleCodes,
+      })
+    ) {
+      throw new Error("That character can no longer be accused.");
+    }
   }
 
   await prisma.$transaction(async (tx) => {
