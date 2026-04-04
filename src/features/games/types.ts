@@ -78,3 +78,119 @@ export type HostGameDetail = {
     email?: string;
   }>;
 };
+
+export type HostScenarioWarning = {
+  code: string;
+  title: string;
+  detail: string;
+};
+
+export type HostScenarioStageSummary = {
+  key: StageKey | "resolution";
+  label: string;
+  summary: string;
+  eventTitle: string;
+  eventDescription: string;
+  mechanics: {
+    roomActions: boolean;
+    decision: boolean;
+    accusations: boolean;
+  };
+  actGoalCount: number;
+  eventClueCount: number;
+};
+
+export type HostScenarioRoleSheet = {
+  roleCode: string;
+  seatLabel: string;
+  characterName: string;
+  characterTitle: string;
+  assignedPlayerLabel?: string;
+  publicDescription: string;
+  privateDescription: string;
+  actTwoBriefing?: string;
+  isDecisionOwner: boolean;
+  startingClues: string[];
+  startingItems: string[];
+  knowledge: Array<{
+    subjectName: string;
+    title: string;
+    body: string;
+  }>;
+  actOneGoals: string[];
+  actTwoGoals: string[];
+};
+
+export type HostScenarioSecretSummary = {
+  code: string;
+  title: string;
+  truth: string;
+  clueCodes: string[];
+  clueTitles: string[];
+};
+
+export type HostScenarioClueSummary = {
+  code: string;
+  title: string;
+  body: string;
+  secretTitles: string[];
+  sourceHints: string[];
+  reachableRoleNames: string[];
+};
+
+export type HostScenarioItemSummary = {
+  code: string;
+  label: string;
+  description: string;
+  flags: string[];
+  startingOwnerNames: string[];
+  usedByGoalTitles: string[];
+  sourceHints: string[];
+};
+
+export type HostScenarioGoalPath = {
+  code: string;
+  roleName: string;
+  stage: StageKey | "resolution";
+  title: string;
+  description: string;
+  ruleLabel: string;
+  authorPath: string[];
+  dependencyClueTitles: string[];
+  dependencyItemLabels: string[];
+  softContactNames: string[];
+  warning?: string;
+};
+
+export type HostScenarioRoomSummary = {
+  code: string;
+  name: string;
+  description: string;
+  actOneSearchCount: number;
+  actOneEavesdropCount: number;
+  actTwoSearchCount: number;
+  actTwoEavesdropCount: number;
+};
+
+export type HostScenarioView = {
+  title: string;
+  slug: string;
+  branchLabel?: string;
+  stats: {
+    playerCount: number;
+    roomCount: number;
+    clueCount: number;
+    itemCount: number;
+    secretCount: number;
+    goalCount: number;
+    warningCount: number;
+  };
+  stages: HostScenarioStageSummary[];
+  roles: HostScenarioRoleSheet[];
+  secrets: HostScenarioSecretSummary[];
+  clues: HostScenarioClueSummary[];
+  items: HostScenarioItemSummary[];
+  rooms: HostScenarioRoomSummary[];
+  goalPaths: HostScenarioGoalPath[];
+  warnings: HostScenarioWarning[];
+};

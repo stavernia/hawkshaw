@@ -48,6 +48,12 @@ export function PlayerDashboardClient({
   const currentDashboard =
     controlledDashboards.find((entry) => entry.participant.id === activeDashboardId) ?? dashboard;
   const canUseActions = canUseAppActions(currentDashboard.stage);
+  const knownFacts = currentDashboard.players.flatMap((player) =>
+    player.knownFacts.map((fact) => ({
+      ...fact,
+      characterName: player.characterName ?? player.actorName,
+    })),
+  );
 
   useEffect(() => {
     setActiveDashboardId(dashboard.participant.id);
@@ -161,7 +167,7 @@ export function PlayerDashboardClient({
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
-              <p className="font-medium text-foreground">The Scene</p>
+              <p className="font-medium text-foreground">Tonight</p>
               <p className="mt-2 break-words text-muted-foreground">{currentDashboard.scenarioSummary}</p>
             </div>
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
@@ -169,14 +175,83 @@ export function PlayerDashboardClient({
               <p className="mt-2 break-words text-muted-foreground">{currentDashboard.eventDescription}</p>
             </div>
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
-              <p className="font-medium text-foreground">{currentDashboard.role?.characterName}</p>
-              <p className="mt-1 break-words text-muted-foreground">{currentDashboard.role?.publicDescription}</p>
+              <p className="font-medium text-foreground">Who You Are</p>
+              <p className="mt-2 text-foreground">{currentDashboard.role?.characterName}</p>
+              <p className="mt-1 break-words text-muted-foreground">{currentDashboard.role?.characterTitle}</p>
+              <p className="mt-3 break-words text-muted-foreground">{currentDashboard.role?.publicDescription}</p>
               <p className="mt-3 break-words text-foreground">{currentDashboard.role?.privateDescription}</p>
+            </div>
+            <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+              <p className="font-medium text-foreground">Your Situation Right Now</p>
+              <p className="mt-2 break-words text-muted-foreground">{currentDashboard.role?.currentSummary}</p>
+              {currentDashboard.role?.nextSteps.length ? (
+                <div className="mt-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">What To Do Now</p>
+                  <ol className="mt-2 grid gap-1 text-muted-foreground">
+                    {currentDashboard.role.nextSteps.map((step, index) => (
+                      <li key={`${currentDashboard.role?.code}-step-${index}`}>{index + 1}. {step}</li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
               {currentDashboard.role?.actTwoBriefing ? (
                 <div className="mt-3 rounded-xl bg-primary/10 p-3 break-words text-foreground">
                   {currentDashboard.role.actTwoBriefing}
                 </div>
               ) : null}
+            </div>
+            {currentDashboard.decision ? (
+              <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                <p className="font-medium text-foreground">Decision</p>
+                <p className="mt-2 break-words text-muted-foreground">{currentDashboard.decision.description}</p>
+                <div className="mt-3 grid gap-3">
+                  <form action={submitDecisionAction} className="grid gap-3 rounded-2xl border bg-background/70 p-3">
+                    <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
+                    <input name="gameId" type="hidden" value={currentDashboard.gameId} />
+                    <input name="outcomeKey" type="hidden" value={currentDashboard.decision.optionAKey} />
+                    <Button type="submit" variant="outline">
+                      {currentDashboard.decision.optionALabel}
+                    </Button>
+                  </form>
+                  <form action={submitDecisionAction} className="grid gap-3 rounded-2xl border bg-background/70 p-3">
+                    <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
+                    <input name="gameId" type="hidden" value={currentDashboard.gameId} />
+                    <input name="outcomeKey" type="hidden" value={currentDashboard.decision.optionBKey} />
+                    <Button type="submit">{currentDashboard.decision.optionBLabel}</Button>
+                  </form>
+                </div>
+              </div>
+            ) : null}
+            <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+              <p className="font-medium text-foreground">What You Already Know</p>
+              {currentDashboard.clues.length > 0 ? (
+                <div className="mt-3 grid gap-3">
+                  {currentDashboard.clues.map((clue) => (
+                    <div key={clue.id} className="rounded-xl border bg-background/70 p-3">
+                      <p className="font-medium text-foreground">{clue.title}</p>
+                      <p className="mt-1 break-words text-muted-foreground">{clue.body}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-muted-foreground">No personal clues recorded yet.</p>
+              )}
+            </div>
+            <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+              <p className="font-medium text-foreground">What You Know About Other People</p>
+              {knownFacts.length > 0 ? (
+                <div className="mt-3 grid gap-3">
+                  {knownFacts.map((fact) => (
+                    <div key={fact.id} className="rounded-xl border bg-background/70 p-3">
+                      <p className="font-medium text-foreground">{fact.characterName}</p>
+                      <p className="mt-1 text-foreground">{fact.title}</p>
+                      <p className="mt-1 break-words text-muted-foreground">{fact.body}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-muted-foreground">Your private reads on the other players will collect here.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -224,7 +299,7 @@ export function PlayerDashboardClient({
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground">No personal notes recorded yet.</p>
+                    <p className="text-muted-foreground">Your private read on this character will appear here.</p>
                   )}
                 </div>
               </div>
@@ -417,7 +492,9 @@ export function PlayerDashboardClient({
                     Open room actions
                   </Link>
                 ) : (
-                  <p className="mt-2 text-muted-foreground">Room actions resume in Act 2.</p>
+                  <p className="mt-2 text-muted-foreground">
+                    Room actions are not available in this stage. Wait for an active act to search or eavesdrop.
+                  </p>
                 )}
               </div>
             ))}
@@ -427,67 +504,48 @@ export function PlayerDashboardClient({
 
       {activeTab === "finale" ? (
         <div className="grid gap-4">
-          {currentDashboard.decision ? (
-            <Card className="app-surface overflow-hidden border-white/70">
-              <CardHeader>
-                <CardTitle>Decision</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <p className="text-sm text-muted-foreground">{currentDashboard.decision.description}</p>
-                <form action={submitDecisionAction} className="grid gap-3 rounded-2xl border bg-white/80 p-4">
-                  <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
-                  <input name="gameId" type="hidden" value={currentDashboard.gameId} />
-                  <input name="outcomeKey" type="hidden" value={currentDashboard.decision.optionAKey} />
-                  <Button type="submit" variant="outline">
-                    {currentDashboard.decision.optionALabel}
-                  </Button>
-                </form>
-                <form action={submitDecisionAction} className="grid gap-3 rounded-2xl border bg-white/80 p-4">
-                  <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
-                  <input name="gameId" type="hidden" value={currentDashboard.gameId} />
-                  <input name="outcomeKey" type="hidden" value={currentDashboard.decision.optionBKey} />
-                  <Button type="submit">{currentDashboard.decision.optionBLabel}</Button>
-                </form>
-              </CardContent>
-            </Card>
-          ) : null}
-
           <Card className="app-surface overflow-hidden border-white/70">
             <CardHeader>
               <CardTitle>Accusation</CardTitle>
             </CardHeader>
             <CardContent>
-              <form action={submitAccusationAction} className="grid gap-4">
-                <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
-                <input name="gameId" type="hidden" value={currentDashboard.gameId} />
-                <div className="grid gap-2">
-                  <Label htmlFor="accuse-suspect">Suspect</Label>
-                  <select
-                    className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
-                    defaultValue={currentDashboard.accusation?.suspectParticipantId ?? ""}
-                    id="accuse-suspect"
-                    name="suspectParticipantId"
-                  >
-                    <option value="">Choose a suspect</option>
-                    {currentDashboard.players.map((player) => (
-                      <option key={player.id} value={player.id}>
-                        {player.characterName ?? player.actorName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="accuse-motive">Motive</Label>
-                  <Input defaultValue={currentDashboard.accusation?.motive ?? ""} id="accuse-motive" name="motive" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="accuse-means">Means</Label>
-                  <Input defaultValue={currentDashboard.accusation?.means ?? ""} id="accuse-means" name="means" />
-                </div>
-                <Button size="lg" type="submit">
-                  Submit Accusation
-                </Button>
-              </form>
+              {currentDashboard.canSubmitAccusation ? (
+                <form action={submitAccusationAction} className="grid gap-4">
+                  <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
+                  <input name="gameId" type="hidden" value={currentDashboard.gameId} />
+                  <div className="grid gap-2">
+                    <Label htmlFor="accuse-suspect">Suspect</Label>
+                    <select
+                      className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
+                      defaultValue={currentDashboard.accusation?.suspectParticipantId ?? ""}
+                      id="accuse-suspect"
+                      name="suspectParticipantId"
+                    >
+                      <option value="">Choose a suspect</option>
+                      {currentDashboard.accusationTargets.map((player) => (
+                        <option key={player.id} value={player.id}>
+                          {player.characterName ?? player.actorName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="accuse-motive">Motive</Label>
+                    <Input defaultValue={currentDashboard.accusation?.motive ?? ""} id="accuse-motive" name="motive" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="accuse-means">Means</Label>
+                    <Input defaultValue={currentDashboard.accusation?.means ?? ""} id="accuse-means" name="means" />
+                  </div>
+                  <Button size="lg" type="submit">
+                    Submit Accusation
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Final accusations are locked until the host starts the Finale.
+                </p>
+              )}
             </CardContent>
           </Card>
 

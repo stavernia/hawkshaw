@@ -13,12 +13,12 @@ import {
   triggerEventAction,
 } from "@/src/server/actions/prototype";
 import { requireCurrentSessionUser } from "@/src/lib/auth/session";
-import { getHostGameDetailForGame } from "@/src/server/services/prototype";
+import { getHostGameDetailForGame, getHostScenarioViewForGame } from "@/src/server/services/prototype";
 import { SITE_ROUTES } from "@/src/config/routes";
 
 export const dynamic = "force-dynamic";
 
-const HOST_SECTIONS = ["settings", "controls", "roster", "rooms"] as const;
+const HOST_SECTIONS = ["settings", "controls", "roster", "rooms", "scenario"] as const;
 
 type HostSection = (typeof HOST_SECTIONS)[number];
 
@@ -53,9 +53,12 @@ export default async function GameHostPage({
   const { section } = await searchParams;
   const activeSection = getHostSection(section);
   const user = await requireCurrentSessionUser(SITE_ROUTES.gameHost(gameId));
-  const hostGame = await getHostGameDetailForGame(user.id, gameId);
+  const [hostGame, scenarioView] = await Promise.all([
+    getHostGameDetailForGame(user.id, gameId),
+    getHostScenarioViewForGame(user.id, gameId),
+  ]);
 
-  if (!hostGame) {
+  if (!hostGame || !scenarioView) {
     notFound();
   }
 
@@ -103,6 +106,16 @@ export default async function GameHostPage({
                   variant={activeSection === "rooms" ? "default" : "outline"}
                 >
                   Rooms
+                </Button>
+              </Link>
+              <Link href={hostSectionHref(gameId, "scenario")}>
+                <Button
+                  className="h-9 shrink-0 rounded-full px-3.5 text-[14px]"
+                  size="sm"
+                  type="button"
+                  variant={activeSection === "scenario" ? "default" : "outline"}
+                >
+                  Scenario
                 </Button>
               </Link>
               <Link href={SITE_ROUTES.gamePlayer(gameId)}>
@@ -346,6 +359,340 @@ export default async function GameHostPage({
             ))}
           </CardContent>
         </Card>
+      ) : null}
+
+      {activeSection === "scenario" ? (
+        <div className="grid gap-4 md:gap-6">
+          <section className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+            <Card className="app-surface overflow-hidden border-white/70">
+              <CardHeader>
+                <CardTitle className="text-2xl sm:text-3xl">Scenario Summary</CardTitle>
+                <CardDescription>Read-only authored scenario reference for host tuning and playtest review.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Title</p>
+                  <p className="mt-2 font-medium text-foreground">{scenarioView.title}</p>
+                  <p className="mt-1 break-all text-muted-foreground">{scenarioView.slug}</p>
+                </div>
+                <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current Branch</p>
+                  <p className="mt-2 font-medium text-foreground">{scenarioView.branchLabel ?? "Not chosen yet"}</p>
+                </div>
+                <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Counts</p>
+                  <p className="mt-2 text-muted-foreground">
+                    {scenarioView.stats.playerCount} roles · {scenarioView.stats.roomCount} rooms · {scenarioView.stats.clueCount} clues
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    {scenarioView.stats.itemCount} items · {scenarioView.stats.secretCount} secrets · {scenarioView.stats.goalCount} goals
+                  </p>
+                </div>
+                <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Warnings</p>
+                  <p className="mt-2 font-medium text-foreground">{scenarioView.stats.warningCount}</p>
+                  <p className="mt-1 text-muted-foreground">Prototype tuning heuristics, not hard errors.</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="app-surface overflow-hidden border-white/70">
+              <CardHeader>
+                <CardTitle className="text-2xl sm:text-3xl">Potential Weak Spots</CardTitle>
+                <CardDescription>Quick heuristics to help spot thin paths or missing author notes.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {scenarioView.warnings.length > 0 ? (
+                  scenarioView.warnings.map((warning) => (
+                    <div key={warning.code} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                      <p className="font-medium text-foreground">{warning.title}</p>
+                      <p className="mt-1 break-words text-muted-foreground">{warning.detail}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No obvious weak spots detected from the authored metadata.</p>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          <Card className="app-surface overflow-hidden border-white/70">
+            <CardHeader>
+              <CardTitle className="text-2xl sm:text-3xl">Stage Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 lg:grid-cols-2">
+              {scenarioView.stages.map((stage) => (
+                <div key={stage.key} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-foreground">{stage.label}</p>
+                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Goals {stage.actGoalCount} · Event clues {stage.eventClueCount}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-foreground">{stage.eventTitle}</p>
+                  <p className="mt-1 break-words text-muted-foreground">{stage.summary}</p>
+                  <p className="mt-2 break-words text-muted-foreground">{stage.eventDescription}</p>
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {stage.mechanics.roomActions ? "Room actions" : "No room actions"} · {stage.mechanics.decision ? "Decision live" : "No decision"} ·{" "}
+                    {stage.mechanics.accusations ? "Accusations open" : "No accusations"}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="app-surface overflow-hidden border-white/70">
+            <CardHeader>
+              <CardTitle className="text-2xl sm:text-3xl">Character Sheets</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 xl:grid-cols-2">
+              {scenarioView.roles.map((role) => (
+                <article key={role.roleCode} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-foreground">{role.characterName}</p>
+                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{role.seatLabel}</span>
+                    {role.isDecisionOwner ? (
+                      <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground">
+                        Decision owner
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{role.characterTitle}</p>
+                  <p className="mt-2 break-words text-muted-foreground">Assigned: {role.assignedPlayerLabel ?? "Open"}</p>
+                  <p className="mt-3 text-foreground">{role.publicDescription}</p>
+                  <p className="mt-2 break-words text-muted-foreground">{role.privateDescription}</p>
+                  {role.actTwoBriefing ? <p className="mt-2 break-words text-muted-foreground">Act 2: {role.actTwoBriefing}</p> : null}
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Starting clues</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {role.startingClues.map((entry) => (
+                          <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                            {entry}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Starting items</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {role.startingItems.map((entry) => (
+                          <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                            {entry}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Private knowledge</p>
+                    <div className="mt-2 grid gap-2">
+                      {role.knowledge.map((entry) => (
+                        <div key={`${role.roleCode}-${entry.title}`} className="rounded-xl border bg-background/70 p-3">
+                          <p className="font-medium text-foreground">{entry.title}</p>
+                          <p className="mt-1 text-muted-foreground">{entry.subjectName}</p>
+                          <p className="mt-1 break-words text-muted-foreground">{entry.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Act 1 goals</p>
+                      <ul className="mt-2 grid gap-1 text-muted-foreground">
+                        {role.actOneGoals.map((goal) => (
+                          <li key={goal}>{goal}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Act 2 goals</p>
+                      <ul className="mt-2 grid gap-1 text-muted-foreground">
+                        {role.actTwoGoals.map((goal) => (
+                          <li key={goal}>{goal}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </CardContent>
+          </Card>
+
+          <section className="grid gap-4 md:gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <Card className="app-surface overflow-hidden border-white/70">
+              <CardHeader>
+                <CardTitle className="text-2xl sm:text-3xl">Secrets & Supporting Clues</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {scenarioView.secrets.map((secret) => (
+                  <div key={secret.code} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium text-foreground">{secret.title}</p>
+                      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        {secret.clueTitles.length} clues
+                      </span>
+                    </div>
+                    <p className="mt-2 break-words text-muted-foreground">{secret.truth}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {secret.clueTitles.map((clue) => (
+                        <span key={clue} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                          {clue}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="app-surface overflow-hidden border-white/70">
+              <CardHeader>
+                <CardTitle className="text-2xl sm:text-3xl">Rooms</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {scenarioView.rooms.map((room) => (
+                  <div key={room.code} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                    <p className="font-medium text-foreground">{room.name}</p>
+                    <p className="mt-1 break-words text-muted-foreground">{room.description}</p>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Act 1: {room.actOneSearchCount} search / {room.actOneEavesdropCount} eavesdrop
+                    </p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Act 2: {room.actTwoSearchCount} search / {room.actTwoEavesdropCount} eavesdrop
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+
+          <Card className="app-surface overflow-hidden border-white/70">
+            <CardHeader>
+              <CardTitle className="text-2xl sm:text-3xl">Clue / Item Source Map</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 xl:grid-cols-2">
+              <div className="grid gap-3">
+                {scenarioView.clues.map((clue) => (
+                  <div key={clue.code} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                    <p className="font-medium text-foreground">{clue.title}</p>
+                    <p className="mt-1 break-words text-muted-foreground">{clue.body}</p>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Supports</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {clue.secretTitles.map((entry) => (
+                        <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                          {entry}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Sources</p>
+                    <ul className="mt-2 grid gap-1 text-muted-foreground">
+                      {clue.sourceHints.map((entry) => (
+                        <li key={entry}>{entry}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Reachable by</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {clue.reachableRoleNames.map((entry) => (
+                        <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                          {entry}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-3">
+                {scenarioView.items.map((item) => (
+                  <div key={item.code} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                    <p className="font-medium text-foreground">{item.label}</p>
+                    <p className="mt-1 break-words text-muted-foreground">{item.description}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {item.flags.map((flag) => (
+                        <span key={flag} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                          {flag}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Starting owners</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {item.startingOwnerNames.map((entry) => (
+                        <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                          {entry}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Used by goals</p>
+                    <ul className="mt-2 grid gap-1 text-muted-foreground">
+                      {item.usedByGoalTitles.map((entry) => (
+                        <li key={entry}>{entry}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Source hints</p>
+                    <ul className="mt-2 grid gap-1 text-muted-foreground">
+                      {item.sourceHints.map((entry) => (
+                        <li key={entry}>{entry}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="app-surface overflow-hidden border-white/70">
+            <CardHeader>
+              <CardTitle className="text-2xl sm:text-3xl">Goal Paths</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 xl:grid-cols-2">
+              {scenarioView.goalPaths.map((goal) => (
+                <div key={goal.code} className="rounded-2xl border bg-white/80 p-4 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-foreground">{goal.title}</p>
+                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      {goal.roleName} · {goal.stage}
+                    </span>
+                  </div>
+                  <p className="mt-1 break-words text-muted-foreground">{goal.description}</p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{goal.ruleLabel}</p>
+                  {goal.warning ? (
+                    <p className="mt-2 rounded-xl bg-primary/10 px-3 py-2 text-xs text-foreground">{goal.warning}</p>
+                  ) : null}
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Path</p>
+                  <ol className="mt-2 grid gap-1 text-muted-foreground">
+                    {goal.authorPath.map((entry, index) => (
+                      <li key={`${goal.code}-${index}`}>{index + 1}. {entry}</li>
+                    ))}
+                  </ol>
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Dependency clues</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {goal.dependencyClueTitles.map((entry) => (
+                      <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                        {entry}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Dependency items</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {goal.dependencyItemLabels.map((entry) => (
+                      <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                        {entry}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Contacts</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {goal.softContactNames.map((entry) => (
+                      <span key={entry} className="rounded-full border bg-background/70 px-2.5 py-1 text-xs text-foreground">
+                        {entry}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       ) : null}
     </div>
   );

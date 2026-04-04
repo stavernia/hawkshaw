@@ -87,6 +87,30 @@ export function canUseLiveActions(stage: StageKey) {
   return stage === "act-1" || stage === "act-2";
 }
 
+export function isEventOneOrLater(stage: StageKey) {
+  return stage === "event-1" || stage === "act-2" || stage === "finale" || stage === "resolution";
+}
+
+export function canUseDecision(stage: StageKey) {
+  return stage === "act-1";
+}
+
+export function canSubmitAccusation(stage: StageKey) {
+  return stage === "finale";
+}
+
+function hasStagePassed(goalStage: GameStage, currentStage: StageKey) {
+  if (goalStage === "ACT_1") {
+    return currentStage === "event-1" || currentStage === "act-2" || currentStage === "finale" || currentStage === "resolution";
+  }
+
+  if (goalStage === "ACT_2") {
+    return currentStage === "finale" || currentStage === "resolution";
+  }
+
+  return false;
+}
+
 export function getSetupGoalStatus(goalStage: GameStage): GoalStatus {
   return goalStage === "ACT_1" ? "ACTIVE" : "FAILED";
 }
@@ -170,17 +194,47 @@ export function evaluateGoalRule(rule: PrototypeGoalRule, input: {
   clueCodes: string[];
   decisionOutcomeKey?: string | null;
   hasAccusation: boolean;
+  currentStage: StageKey;
+  goalStage: GameStage;
 }) {
   switch (rule.type) {
     case "possess-item":
       return input.itemCodes.includes(rule.itemCode);
+    case "possess-item-until-stage-end":
+      return hasStagePassed(input.goalStage, input.currentStage) && input.itemCodes.includes(rule.itemCode);
     case "gain-clue":
       return input.clueCodes.includes(rule.clueCode);
+    case "gain-any-clue":
+      return rule.clueCodes.some((clueCode) => input.clueCodes.includes(clueCode));
     case "decision-branch":
       return input.decisionOutcomeKey === rule.outcomeKey;
     case "submit-accusation":
       return input.hasAccusation;
   }
+}
+
+export function getEventClueCodes(input: {
+  everyoneClueCodes: string[];
+  branchClueCodes: Record<string, string[]>;
+  branchKey: string;
+}) {
+  return [...input.everyoneClueCodes, ...(input.branchClueCodes[input.branchKey] ?? [])];
+}
+
+export function canAccuseRole(input: {
+  stage: StageKey;
+  roleCode?: string | null;
+  nonSuspectRoleCodes?: string[];
+}) {
+  if (!input.roleCode) {
+    return false;
+  }
+
+  if (input.stage === "setup" || input.stage === "act-1") {
+    return true;
+  }
+
+  return !(input.nonSuspectRoleCodes ?? []).includes(input.roleCode);
 }
 
 export function computeRevealScore(input: {

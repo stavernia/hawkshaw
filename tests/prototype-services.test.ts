@@ -32,8 +32,12 @@ const { mockTx, mockPrisma } = vi.hoisted(() => {
   } as const;
 
   const prisma = {
+    scenarioDefinition: {
+      findUnique: vi.fn(),
+    },
     game: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     gameParticipant: {
       update: vi.fn(),
@@ -51,6 +55,7 @@ vi.mock("@/src/lib/prisma", () => ({
 
 import {
   assignPlayerToSeat,
+  getHostScenarioViewForGame,
   joinGameWithUser,
   startActTwo,
   triggerEventPhaseTwo,
@@ -59,6 +64,16 @@ import {
 describe("prototype services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.scenarioDefinition.findUnique.mockResolvedValue({
+      id: "scenario-1",
+      slug: "blackout-at-hale-cabin",
+      title: "Blackout at Hale Cabin",
+      summary: "Summary",
+      playerCount: 6,
+      rooms: [{ id: "room-1" }],
+    });
+    mockPrisma.game.findUnique.mockResolvedValue(undefined);
+    mockPrisma.game.findFirst.mockResolvedValue(undefined);
     mockPrisma.gameParticipant.findMany.mockResolvedValue([]);
     mockTx.gameParticipant.update.mockResolvedValue(undefined);
     mockTx.playerGoalState.update.mockResolvedValue(undefined);
@@ -203,5 +218,65 @@ describe("prototype services", () => {
         status: "ACTIVE",
       },
     });
+  });
+
+  it("builds a read-only host scenario view from the seeded definition", async () => {
+    mockPrisma.game.findFirst.mockResolvedValue({
+      id: "game-1",
+      title: "Blackout at Hale Cabin",
+      code: "ash-123",
+      status: "ACTIVE",
+      stage: "ACT_1",
+      decisionOutcomeKey: "daniel-public-outburst",
+      scenario: {
+        title: "Blackout at Hale Cabin",
+        eventTitle: "The Blackout Murder",
+        eventDescription: "Victor publicly names Marcus as his successor.",
+        actionBudgetPerAct: 3,
+        roles: [
+          {
+            id: "role-1",
+            code: "victor-hale",
+            slotNumber: 1,
+            characterName: "Victor Hale",
+          },
+        ],
+        rooms: [
+          {
+            id: "room-1",
+            code: "study",
+            name: "Study",
+            description: "Study",
+          },
+        ],
+      },
+      participants: [
+        {
+          id: "seat-1",
+          userId: "user-1",
+          displayName: "Steven",
+          assignedEmail: "steven@example.com",
+          scenarioRoleId: "role-1",
+          assignedAt: new Date("2026-04-01T10:00:00.000Z"),
+          joinedAt: new Date("2026-04-01T10:00:00.000Z"),
+          actionsRemaining: 3,
+          scenarioRole: {
+            code: "victor-hale",
+            characterName: "Victor Hale",
+            characterTitle: "The Host",
+            slotNumber: 1,
+          },
+        },
+      ],
+    });
+
+    const result = await getHostScenarioViewForGame("host-1", "game-1");
+
+    expect(result?.title).toBe("Blackout at Hale Cabin");
+    expect(result?.stages).toHaveLength(6);
+    expect(result?.stages.find((stage) => stage.key === "event-1")?.eventClueCount).toBe(4);
+    expect(result?.roles.some((role) => role.isDecisionOwner && role.roleCode === "daniel-hale")).toBe(true);
+    expect(result?.secrets.every((secret) => secret.clueTitles.length >= 2)).toBe(true);
+    expect(result?.goalPaths.some((goal) => goal.authorPath.length > 0)).toBe(true);
   });
 });

@@ -11,11 +11,13 @@ export type PlayerKnowledgeFact = {
   id: EntityId;
   title: string;
   body: string;
+  subjectName?: string;
 };
 
 export type PersonalizedPlayerDetail = {
   id: EntityId;
   actorName: string;
+  roleCode?: string;
   characterName?: string;
   characterTitle?: string;
   publicDescription?: string;
@@ -67,6 +69,8 @@ export type PlayerDashboardView = {
     publicDescription: string;
     privateDescription: string;
     actTwoBriefing?: string;
+    currentSummary: string;
+    nextSteps: string[];
   };
   goals: Array<{
     id: EntityId;
@@ -89,6 +93,13 @@ export type PlayerDashboardView = {
     code: string;
   }>;
   players: PersonalizedPlayerDetail[];
+  accusationTargets: Array<{
+    id: EntityId;
+    actorName: string;
+    roleCode?: string;
+    characterName?: string;
+    characterTitle?: string;
+  }>;
   pendingIncomingTrades: PendingTradeSummary[];
   pendingOutgoingTrades: PendingTradeSummary[];
   accusation?: {
@@ -105,6 +116,7 @@ export type PlayerDashboardView = {
     optionBLabel: string;
     selectedOutcomeKey?: string;
   };
+  canSubmitAccusation: boolean;
   actionLog: Array<{
     id: EntityId;
     actionType: string;
