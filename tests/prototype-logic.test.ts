@@ -50,6 +50,21 @@ describe("selectNextRoomResult", () => {
     expect(result?.result.key).toBe("two");
     expect(result?.nextIndex).toBe(1);
   });
+
+  it("skips eavesdrop results excluded for the acting role", () => {
+    const result = selectNextRoomResult(
+      [
+        { key: "one", text: "About Marcus", stage: "act-1", excludedRoleCodes: ["marcus-reed"] },
+        { key: "two", text: "About Daniel", stage: "act-1", excludedRoleCodes: ["daniel-hale"] },
+      ],
+      0,
+      "act-1",
+      "marcus-reed",
+    );
+
+    expect(result?.result.key).toBe("two");
+    expect(result?.nextIndex).toBe(1);
+  });
 });
 
 describe("evaluateGoalRule", () => {

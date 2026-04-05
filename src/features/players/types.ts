@@ -21,6 +21,7 @@ export type PersonalizedPlayerDetail = {
   characterName?: string;
   characterTitle?: string;
   publicDescription?: string;
+  canBePickpocketed?: boolean;
   knownFacts: PlayerKnowledgeFact[];
 };
 
@@ -76,6 +77,7 @@ export type PlayerDashboardView = {
       playTips: string[];
     };
     currentSummary: string;
+    starterHints: string[];
     nextSteps: string[];
   };
   goals: Array<{

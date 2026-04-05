@@ -652,3 +652,61 @@ Consequences:
   still verify the authenticated user with Supabase.
 - `getCurrentSessionUser()` once again performs a session read, keeping optional session-aware
   surfaces lighter and semantically correct.
+
+## 2026-04-04 - accepted
+
+Decision:
+Treat room eavesdrop results as overheard information about other people, not a way to surface the
+acting player's own thread back to them.
+
+Context:
+The room action system was cycling through a shared list of authored eavesdrop results without any
+awareness of who was taking the action. That meant players could spend an action to eavesdrop and
+receive clues that were effectively about their own private plotline, which undermined the fantasy
+of overhearing someone else.
+
+Consequences:
+
+- Prototype room results can now exclude specific role codes from receiving a given overheard
+  result.
+- The room action selector skips those excluded results for the acting participant while keeping the
+  same basic deterministic room-action model.
+- Authored Act 1 eavesdrop beats that clearly belong to Jack, Daniel, Marcus, Eleanor, or Sofia now
+  avoid returning to those same roles.
+
+## 2026-04-04 - accepted
+
+Decision:
+Add a dedicated Overview onboarding block with concrete starter hints for each role in Setup and
+Act 1.
+
+Context:
+Even with clearer goals and character framing, first-time players were still asking where to begin
+ once they opened the app. Goals explain what matters, but they do not always give the first
+ practical move that gets a player into the social and room-action loop.
+
+Consequences:
+
+- Role stage briefings can now include `starterHints` alongside the broader summary and next steps.
+- The Overview tab now shows a `Where To Start` section when hints are available.
+- Setup and Act 1 role content now gives each character a few concrete opening moves tied to rooms,
+  people, items, or pressure points.
+
+## 2026-04-04 - accepted
+
+Decision:
+Only present currently valid player and room actions in the prototype UI, instead of letting users
+submit actions that are known to fail.
+
+Context:
+Live play surfaced two rough spots: pickpocket could target characters with nothing stealable, and
+room pages could still offer search/eavesdrop buttons after a room had no result left for that act.
+Both cases pushed players into server-action errors instead of guiding them toward the remaining
+play space.
+
+Consequences:
+
+- Pickpocket targets are now limited to players currently holding at least one stealable item.
+- Room pages now compute whether search or eavesdrop has a valid remaining result for the acting
+  role and current act, and disable the buttons when not.
+- The room UI now explains action availability so players understand why a button is disabled.

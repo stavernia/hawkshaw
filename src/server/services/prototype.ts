@@ -1747,6 +1747,11 @@ async function buildPlayerDashboardView(input: {
       },
       include: {
         scenarioRole: true,
+        items: {
+          include: {
+            scenarioItem: true,
+          },
+        },
         knowledgeAbout: {
           where: {
             viewerParticipantId: participant.id,
@@ -1888,6 +1893,9 @@ async function buildPlayerDashboardView(input: {
           currentSummary:
             PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]?.summary ??
             participant.scenarioRole.privateDescription,
+          starterHints:
+            PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]
+              ?.starterHints ?? [],
           nextSteps:
             PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]?.nextSteps ?? [],
         }
@@ -1927,6 +1935,7 @@ async function buildPlayerDashboardView(input: {
       characterName: player.scenarioRole?.characterName,
       characterTitle: player.scenarioRole?.characterTitle,
       publicDescription: player.scenarioRole?.publicDescription,
+      canBePickpocketed: player.items.some((item) => item.quantity > 0 && item.scenarioItem.isStealable),
       knownFacts: buildKnownFactsForPlayer({
         viewerRoleCode: participant.scenarioRole?.code,
         subjectRoleCode: player.scenarioRole?.code,
@@ -2070,6 +2079,7 @@ async function getUserParticipantForGameLite(userId: string, gameId?: string) {
     },
     include: {
       game: true,
+      scenarioRole: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -2092,6 +2102,7 @@ async function getActingParticipantForRoom(input: {
       where: { id: input.actingParticipantId },
       include: {
         game: true,
+        scenarioRole: true,
       },
     });
 
@@ -2749,10 +2760,26 @@ export async function getRoomViewForUser(
     take: 5,
   });
 
+  const roleCode = participant.scenarioRole?.code;
+  const searchAvailable = !!selectNextRoomResult(
+    parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.searchResultsJson),
+    roomState.searchIndex,
+    mapGameStageToKey(participant.game.stage),
+    roleCode,
+  );
+  const eavesdropAvailable = !!selectNextRoomResult(
+    parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.eavesdropJson),
+    roomState.eavesdropIndex,
+    mapGameStageToKey(participant.game.stage),
+    roleCode,
+  );
+
   return {
     participant,
     roomState,
      stage: mapGameStageToKey(participant.game.stage),
+    searchAvailable,
+    eavesdropAvailable,
     recentLogs,
   };
 }
@@ -2793,8 +2820,18 @@ async function resolveRoomAction(
 
   const payload =
     action === "search"
-      ? selectNextRoomResult(parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.searchResultsJson), roomState.searchIndex, stage)
-      : selectNextRoomResult(parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.eavesdropJson), roomState.eavesdropIndex, stage);
+      ? selectNextRoomResult(
+          parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.searchResultsJson),
+          roomState.searchIndex,
+          stage,
+          participant.scenarioRole?.code,
+        )
+      : selectNextRoomResult(
+          parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.eavesdropJson),
+          roomState.eavesdropIndex,
+          stage,
+          participant.scenarioRole?.code,
+        );
 
   if (!payload) {
     throw new Error("No results remain for this action.");
