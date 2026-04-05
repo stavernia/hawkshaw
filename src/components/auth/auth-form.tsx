@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Chrome, Mail } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/src/lib/supabase/browser";
+import { clientEnv } from "@/src/lib/env/client";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
@@ -15,9 +16,11 @@ export function AuthForm({ nextPath }: { nextPath: string }) {
   const [isPending, startTransition] = useTransition();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
 
-  const redirectTo = typeof window === "undefined"
-    ? undefined
-    : `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  const redirectTo = useMemo(() => {
+    const callbackUrl = new URL("/auth/callback", clientEnv.NEXT_PUBLIC_APP_URL);
+    callbackUrl.searchParams.set("next", nextPath);
+    return callbackUrl.toString();
+  }, [nextPath]);
 
   const handleGoogleSignIn = () => {
     startTransition(async () => {

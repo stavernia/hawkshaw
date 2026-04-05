@@ -185,6 +185,22 @@ Consequences:
   unsupported alternate success path.
 - A broader Act 1 clue route now points toward Jack's suspicious interest in the blackout timing.
 
+## 2026-04-04 - accepted
+
+Decision:
+Use the configured app URL for auth callback redirects instead of the current browser origin.
+
+Context:
+Magic-link and OAuth sign-in were building callback URLs from `window.location.origin`, which caused
+emails opened from a local dev session to point back to localhost instead of the intended app
+domain.
+
+Consequences:
+
+- Auth redirects now use `NEXT_PUBLIC_APP_URL` as the canonical callback base.
+- Local and hosted environments need that env var aligned with the intended app URL.
+- Supabase redirect allowlists must include the configured callback domain.
+
 ## 2026-03-31 - accepted
 
 Decision:
