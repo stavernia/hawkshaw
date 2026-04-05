@@ -629,3 +629,26 @@ Consequences:
 - The top character card is shorter because it no longer needs to permanently carry the section
   rail on phones.
 - Desktop and tablet retain the inline tab row near the character header.
+
+## 2026-04-04 - accepted
+
+Decision:
+Version-gate prototype scenario synchronization and keep session and authenticated-user auth reads
+separate.
+
+Context:
+The cabin prototype content now changes frequently, so existing games need a way to repair their
+persisted seeded scenario records after content updates. Re-running the full sync on every host read
+fixed drift but made host navigation unacceptably slow. At the same time, changing the session helper
+to always call `getUser()` removed a Supabase warning but made every optional session check take the
+full authenticated-user path.
+
+Consequences:
+
+- `ensurePrototypeScenario()` now short-circuits once the persisted seeded scenario has been synced
+  to the current authored version, and only reruns the heavier repair pass when that version key
+  changes.
+- Host and player pages that gate access now use `requireCurrentUser()` so protected app surfaces
+  still verify the authenticated user with Supabase.
+- `getCurrentSessionUser()` once again performs a session read, keeping optional session-aware
+  surfaces lighter and semantically correct.

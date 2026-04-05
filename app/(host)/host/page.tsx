@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { createPrototypeGameAction } from "@/src/server/actions/prototype";
-import { requireCurrentSessionUser } from "@/src/lib/auth/session";
+import { requireCurrentUser } from "@/src/lib/auth/session";
 import { ensurePrototypeScenario, getHostGameList } from "@/src/server/services/prototype";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,9 @@ function stageLabel(stage: string) {
 }
 
 export default async function HostPage() {
-  const user = await requireCurrentSessionUser("/host");
-  const [scenario, games] = await Promise.all([ensurePrototypeScenario(), getHostGameList(user.id)]);
+  const user = await requireCurrentUser("/host");
+  const scenario = await ensurePrototypeScenario();
+  const games = await getHostGameList(user.id);
 
   return (
     <div className="grid gap-6">

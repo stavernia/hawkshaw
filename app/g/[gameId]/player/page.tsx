@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PlayerDashboardClient, type PlayerTab } from "@/src/components/player/player-dashboard-client";
-import { requireCurrentSessionUser } from "@/src/lib/auth/session";
+import { requireCurrentUser } from "@/src/lib/auth/session";
 import { SITE_ROUTES } from "@/src/config/routes";
 import { getPlayerDashboardForUser } from "@/src/server/services/prototype";
 
@@ -46,7 +46,7 @@ export default async function GamePlayerPage({
   const { gameId } = await params;
   const { as, tab } = await searchParams;
   const currentTab = getTab(tab);
-  const user = await requireCurrentSessionUser(SITE_ROUTES.gamePlayer(gameId));
+  const user = await requireCurrentUser(SITE_ROUTES.gamePlayer(gameId));
   const dashboard = await getPlayerDashboardForUser(user.id, gameId, as);
 
   if (!dashboard) {

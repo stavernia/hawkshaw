@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AppShellHeader } from "@/src/components/layout/app-shell-header";
 import { SITE_ROUTES } from "@/src/config/routes";
-import { requireCurrentSessionUser } from "@/src/lib/auth/session";
+import { requireCurrentUser } from "@/src/lib/auth/session";
 import { getPlayerDashboardForUser } from "@/src/server/services/prototype";
 
 function formatStageLabel(stage: string) {
@@ -28,7 +28,7 @@ export default async function ScopedPlayerLayout({
   params,
 }: Readonly<{ children: React.ReactNode; params: Promise<{ gameId: string }> }>) {
   const { gameId } = await params;
-  const user = await requireCurrentSessionUser(SITE_ROUTES.gamePlayer(gameId));
+  const user = await requireCurrentUser(SITE_ROUTES.gamePlayer(gameId));
   const dashboard = await getPlayerDashboardForUser(user.id, gameId);
 
   if (!dashboard) {

@@ -55,6 +55,10 @@ const { mockTx, mockPrisma } = vi.hoisted(() => {
   } as const;
 
   const prisma = {
+    systemSetting: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
     scenarioDefinition: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -112,6 +116,8 @@ import {
 describe("prototype services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.systemSetting.findUnique.mockResolvedValue(null);
+    mockPrisma.systemSetting.upsert.mockResolvedValue(undefined);
     mockPrisma.scenarioDefinition.findUnique.mockResolvedValue({
       id: "scenario-1",
       slug: "blackout-at-hale-cabin",

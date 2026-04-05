@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { requireCurrentSessionUser } from "@/src/lib/auth/session";
+import { requireCurrentUser } from "@/src/lib/auth/session";
 import { SITE_ROUTES } from "@/src/config/routes";
 import { getLatestPlayerGameIdForUser } from "@/src/server/services/prototype";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlayerHomeRedirectPage() {
-  const user = await requireCurrentSessionUser("/player");
+  const user = await requireCurrentUser("/player");
   const gameId = await getLatestPlayerGameIdForUser(user.id);
 
   if (gameId) {
