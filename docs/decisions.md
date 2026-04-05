@@ -728,3 +728,21 @@ Consequences:
   without a schema change.
 - Host and room surfaces now render `Unlimited` instead of a numeric remaining-action count.
 - The seeded scenario sync version was bumped so existing games update to the unlimited budget.
+
+## 2026-04-04 - accepted
+
+Decision:
+Use batched Prisma writes for Event 1 clue awards instead of an interactive transaction loop.
+
+Context:
+Triggering Event 1 was still iterating clue awards inside a single interactive transaction, which
+expired once enough player-clue upserts accumulated. The prototype already hit the same problem on
+Act 1 startup, so the event transition needed the same treatment.
+
+Consequences:
+
+- Event 1 now builds its game update, clue awards, and log write as a batched Prisma transaction.
+- Event transitions fail fast with a clear missing-clue error if authored event award codes drift
+  from the persisted scenario.
+- Recompute still runs after the write batch completes, but the transaction itself is no longer
+  vulnerable to timeout from sequential clue-award loops.
