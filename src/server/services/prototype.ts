@@ -1869,6 +1869,8 @@ async function buildPlayerDashboardView(input: {
     scenarioSummary: stageContent.summary,
     eventTitle: stageContent.eventTitle,
     eventDescription: stageContent.eventDescription,
+    crimeSceneTitle: stageContent.crimeSceneTitle,
+    crimeSceneDescription: stageContent.crimeSceneDescription,
     participant: {
       id: participant.id,
       actorName: playerLabelFromSeat(participant),

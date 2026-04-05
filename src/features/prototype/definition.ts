@@ -69,6 +69,8 @@ export type PrototypeStageContent = {
   summary: string;
   eventTitle: string;
   eventDescription: string;
+  crimeSceneTitle?: string;
+  crimeSceneDescription?: string;
 };
 
 export type PrototypeScenarioDefinition = {
@@ -190,6 +192,9 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
       eventTitle: "The Blackout Murder",
       eventDescription:
         "The murder has happened. Actions pause while everyone absorbs the new reality, fresh clues land, and the next phase of the investigation takes shape.",
+      crimeSceneTitle: "What The Room Sees",
+      crimeSceneDescription:
+        "Victor Hale's body has been found in the Study. He is down beside the desk, struck once at close range with the Hale heirloom dagger. There are no signs of a wild fight: the room looks disturbed, but not ransacked, and the wound looks deliberate rather than frantic. The safe shows fresh scratches, papers are out of place, and the blackout created a narrow window in which someone familiar enough with the house could slip into the Study, kill Victor, and leave the scene muddy behind them.",
     },
     "act-2": {
       summary:
@@ -197,6 +202,9 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
       eventTitle: "Aftermath And Scramble",
       eventDescription:
         "Use Act 2 to connect the murder to the deeper secrets underneath the weekend while protecting your own position long enough to survive the accusation round.",
+      crimeSceneTitle: "Crime Scene Pressure",
+      crimeSceneDescription:
+        "The Study remains the center of the case: Victor is dead from a single close strike, the dagger is part of the story, and the room still bears signs that someone went after papers as well as blood. The scene suggests control, timing, and purpose more than chaos. Whatever else happened in the house tonight, the person who killed Victor used the blackout well.",
     },
     finale: {
       summary:
@@ -204,6 +212,9 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
       eventTitle: "Final Accusations",
       eventDescription:
         "Submit your suspect, motive, and means. This is the formal accusation round, not another search phase.",
+      crimeSceneTitle: "The Core Physical Facts",
+      crimeSceneDescription:
+        "Victor died in the Study during the blackout from a deliberate close strike with the Hale heirloom dagger. The Study safe and papers were disturbed, which means the killing was wrapped up with whatever someone feared, wanted, or needed from Victor's private records.",
     },
     resolution: {
       summary:
@@ -211,6 +222,9 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
       eventTitle: "Reveal",
       eventDescription:
         "Review the solution, compare it to your accusation, and see how your goals and deductions scored out.",
+      crimeSceneTitle: "What Happened In The Study",
+      crimeSceneDescription:
+        "Marcus used Jack's blackout window to enter the Study, kill Victor with the heirloom dagger, and disturb the safe afterward to blur the motive. The body, the wound, and the disturbed papers were all part of the same controlled act.",
     },
   },
   stageMechanics: {
