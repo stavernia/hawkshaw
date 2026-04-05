@@ -157,7 +157,7 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
   summary:
     "A winter succession dinner at an isolated mountain cabin turns lethal when the lights fail and Victor Hale is found dead in his Study.",
   playerCount: 6,
-  actionBudgetPerAct: 8,
+  actionBudgetPerAct: -1,
   eventTitle: "The Blackout Murder",
   eventDescription:
     "Victor publicly names Marcus as his successor, retreats to the Study, the cabin drops into darkness, and moments later Victor is discovered murdered.",

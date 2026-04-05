@@ -714,15 +714,17 @@ Consequences:
 ## 2026-04-04 - accepted
 
 Decision:
-Raise the cabin prototype action budget to 8 actions per act.
+Make actions unlimited in the cabin prototype.
 
 Context:
-Live play showed that the previous action budget was too tight for players who were still learning
-the app and the scenario at the same time. The prototype benefits more from giving players enough
-room to explore rooms, items, and social moves than from strict scarcity.
+Even after raising the budget, the prototype still benefits more from letting players explore rooms,
+items, and social actions freely than from any meaningful action scarcity. For this test pass, the
+main goal is system coverage and player momentum, not resource pressure.
 
 Consequences:
 
-- Act 1 and Act 2 now each grant 8 actions per player.
-- The seeded scenario sync version was bumped so existing games update to the new budget instead of
-  staying on the earlier cached definition.
+- Act 1 and Act 2 now treat actions as unlimited for all players.
+- The runtime uses a negative action budget sentinel so this remains a targeted prototype behavior
+  without a schema change.
+- Host and room surfaces now render `Unlimited` instead of a numeric remaining-action count.
+- The seeded scenario sync version was bumped so existing games update to the unlimited budget.

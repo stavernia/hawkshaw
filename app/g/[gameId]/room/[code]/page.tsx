@@ -13,6 +13,10 @@ function stageLabel(stage: string) {
   return stage.replace("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function actionsRemainingLabel(actionsRemaining: number) {
+  return actionsRemaining < 0 ? "Unlimited" : String(actionsRemaining);
+}
+
 export default async function ScopedRoomEntryPage({
   params,
   searchParams,
@@ -75,7 +79,7 @@ export default async function ScopedRoomEntryPage({
             </div>
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Actions Remaining</p>
-              <p className="mt-2 font-medium text-foreground">{participant.actionsRemaining}</p>
+              <p className="mt-2 font-medium text-foreground">{actionsRemainingLabel(participant.actionsRemaining)}</p>
             </div>
           </CardContent>
         </Card>
@@ -84,7 +88,9 @@ export default async function ScopedRoomEntryPage({
             <CardTitle>Room Actions</CardTitle>
             <CardDescription>
               {["act-1", "act-2"].includes(stage)
-                ? "Room actions are deterministic and consume one action during active acts."
+                ? participant.actionsRemaining < 0
+                  ? "Room actions are deterministic and unlimited during active acts in this prototype."
+                  : "Room actions are deterministic and consume one action during active acts."
                 : "Room actions pause during Event 1 and resume with the next active act."}
             </CardDescription>
           </CardHeader>
