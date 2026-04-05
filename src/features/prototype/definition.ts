@@ -20,6 +20,13 @@ export type PrototypeRoleStageBriefing = {
   nextSteps: string[];
 };
 
+export type PrototypeRolePerformanceDefinition = {
+  vibe: string;
+  inspiration: string;
+  quirk: string;
+  playTips: string[];
+};
+
 export type PrototypeStageMechanicDefinition = {
   roomActions: boolean;
   decision: boolean;
@@ -34,6 +41,7 @@ export type PrototypeRoleDefinition = {
   publicDescription: string;
   privateDescription: string;
   actTwoBriefing?: string;
+  performance: PrototypeRolePerformanceDefinition;
   stageBriefings: Record<"setup" | "act-1" | "event-1" | "act-2" | "finale", PrototypeRoleStageBriefing>;
   startingItemCodes: string[];
   startingClueCodes: string[];
@@ -289,6 +297,16 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "You came to announce a successor and keep everyone off balance. The fraud is real, and tonight you mean to decide who gets buried by it.",
       actTwoBriefing:
         "You are dead, but your final arrangements and private signals still shape what the others can prove. Push them toward the truth you left behind.",
+      performance: {
+        vibe: "Own the room. Speak like everyone else is already one move behind you, and treat every conversation like a test.",
+        inspiration: "Logan Roy with a little more theatrical polish.",
+        quirk: "Pause just a beat too long before answering, like you are deciding whether anyone deserves the truth.",
+        playTips: [
+          "Reward people with attention, then pull it away.",
+          "Use charm and cruelty in the same breath.",
+          "Make everyone feel judged, even when you are smiling.",
+        ],
+      },
       stageBriefings: {
         setup: {
           summary:
@@ -370,6 +388,16 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "Your marriage is a performance. Keep your secret with Sofia buried and make sure Victor's announcement does not ruin what little freedom you have left.",
       actTwoBriefing:
         "Victor's death frees some dangers and sharpens others. Protect Sofia, redirect suspicion, and decide how much truth this family deserves.",
+      performance: {
+        vibe: "Be graceful, immaculate, and dangerous in a soft voice. You are the person who keeps the room civilized while secretly steering it.",
+        inspiration: "Cate Blanchett at a dinner party where she already knows everyone's weak point.",
+        quirk: "Straighten someone's collar, glass, or posture while saying something quietly devastating.",
+        playTips: [
+          "Never rush your responses.",
+          "Smile most when the room gets uncomfortable.",
+          "Make control look effortless, even when you are panicking underneath.",
+        ],
+      },
       stageBriefings: {
         setup: {
           summary:
@@ -451,6 +479,16 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "You expect the business to be yours. If Victor humiliates you tonight, make sure everyone remembers his cruelty before they remember your temper.",
       actTwoBriefing:
         "Now you look like the easy suspect. Turn that to your advantage by finding the real financial motive and keeping the dagger story messy.",
+      performance: {
+        vibe: "Be charming, proud, reactive, and just a little reckless. You want to look like the natural heir even when you feel wounded.",
+        inspiration: "Kendall Roy if he had more swagger and less self-control.",
+        quirk: "Give one disbelieving laugh when insulted, like you cannot believe anyone would dare.",
+        playTips: [
+          "Flirt, posture, sulk, erupt, then recover.",
+          "Let people see the bruise underneath the ego.",
+          "Act like disrespect is more offensive than danger.",
+        ],
+      },
       stageBriefings: {
         setup: {
           summary:
@@ -526,6 +564,16 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "Victor has tied you to the fraud and may sacrifice you to save the family name. Control the paper trail, keep calm, and survive the night.",
       actTwoBriefing:
         "Victor is dead and everyone is finally looking where you feared they would. Stay useful, stay composed, and keep the evidence moving.",
+      performance: {
+        vibe: "Be polished, measured, and almost too calm. You are the person who looks controlled even when the floor is disappearing under you.",
+        inspiration: "Mads Mikkelsen doing corporate damage control.",
+        quirk: "Adjust your cuffs, sleeves, or watch whenever pressure spikes.",
+        playTips: [
+          "Speak precisely and rarely waste words.",
+          "Let tiny cracks show only when the stakes spike.",
+          "Make calm itself feel like a defensive weapon.",
+        ],
+      },
       stageBriefings: {
         setup: {
           summary:
@@ -601,6 +649,16 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "You came for Eleanor, not Victor's empire. Keep your affair hidden, learn why the business is rotting, and do not let yourself become collateral damage.",
       actTwoBriefing:
         "Victor's death makes your secret both riskier and more useful. Pick the truth that protects Eleanor without handing the killer a clean escape.",
+      performance: {
+        vibe: "Be perceptive, witty, and lightly amused, like you are clocking the room in real time while others underestimate you.",
+        inspiration: "Eva Green as the smartest guest at a dangerous dinner.",
+        quirk: "Say the most revealing thing in the room as if it were a casual observation.",
+        playTips: [
+          "Drift socially instead of planting yourself in one camp.",
+          "Use understatement to make people lean in.",
+          "Play outsider and insider at the same time.",
+        ],
+      },
       stageBriefings: {
         setup: {
           summary:
@@ -676,6 +734,16 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "Victor wrecked your old business and then acted as if you should be grateful for scraps. The blackout is yours, but the murder is not. Get what you came for and do not hang for someone else's knife.",
       actTwoBriefing:
         "The blackout worked too well. You need enough proof of tampering and timing to separate your stunt from Victor's murder before the room decides they are the same thing.",
+      performance: {
+        vibe: "Be blunt, feral, funny, and slightly unpredictable. You are the least polished person in the room and you should use that.",
+        inspiration: "Walton Goggins with a grudge and better instincts than anyone expects.",
+        quirk: "Pick up objects that are not yours, inspect them, and put them back somewhere slightly different.",
+        playTips: [
+          "Needle rich people whenever it amuses you.",
+          "Make everyone wonder if you are joking or warning them.",
+          "Enjoy making the room uncomfortable without losing the thread.",
+        ],
+      },
       stageBriefings: {
         setup: {
           summary:
