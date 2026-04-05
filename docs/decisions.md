@@ -219,6 +219,25 @@ Consequences:
 - The player Overview tab now shows a dedicated "How To Act" card.
 - This is guidance only; it does not affect game logic or scoring.
 
+## 2026-04-04 - accepted
+
+Decision:
+Synchronize the persisted seeded prototype scenario with the authored scenario definition on read,
+instead of assuming the database copy is always current.
+
+Context:
+Scenario content is changing rapidly during prototype iteration. New clues, renamed characters, and
+updated goals can leave an older seeded scenario in the database missing authored records that the
+runtime now expects, which caused Act 1 startup to fail when a new starting clue code had no
+persisted match.
+
+Consequences:
+
+- `ensurePrototypeScenario()` now repairs and updates the existing seeded scenario in place.
+- Content-only scenario changes no longer require manually wiping the seed before testing.
+- Existing games keep stable foreign keys where possible because records are updated by code rather
+  than replaced wholesale.
+
 ## 2026-03-31 - accepted
 
 Decision:

@@ -12,12 +12,7 @@ export async function getCurrentUser() {
 }
 
 export async function getCurrentSessionUser() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  return session?.user ?? null;
+  return getCurrentUser();
 }
 
 export async function requireCurrentUser(nextPath?: string) {
