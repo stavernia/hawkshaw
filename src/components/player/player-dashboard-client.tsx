@@ -54,6 +54,7 @@ export function PlayerDashboardClient({
       characterName: player.characterName ?? player.actorName,
     })),
   );
+  const pickpocketTargets = currentDashboard.players.filter((player) => player.canBePickpocketed);
 
   useEffect(() => {
     setActiveDashboardId(dashboard.participant.id);
@@ -181,6 +182,19 @@ export function PlayerDashboardClient({
               <p className="mt-3 break-words text-muted-foreground">{currentDashboard.role?.publicDescription}</p>
               <p className="mt-3 break-words text-foreground">{currentDashboard.role?.privateDescription}</p>
             </div>
+            {currentDashboard.role?.starterHints.length ? (
+              <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                <p className="font-medium text-foreground">Where To Start</p>
+                <p className="mt-2 break-words text-muted-foreground">
+                  If you are not sure what to do first, use these opening moves to get yourself into the story.
+                </p>
+                <ol className="mt-3 grid gap-1 text-muted-foreground">
+                  {currentDashboard.role.starterHints.map((hint, index) => (
+                    <li key={`${currentDashboard.role?.code}-starter-hint-${index}`}>{index + 1}. {hint}</li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
             {currentDashboard.role?.howToAct ? (
               <div className="rounded-2xl border bg-white/80 p-4 text-sm">
                 <p className="font-medium text-foreground">How To Act</p>
@@ -414,22 +428,30 @@ export function PlayerDashboardClient({
                 <input name="actingParticipantId" type="hidden" value={currentDashboard.participant.id} />
                 <input name="gameId" type="hidden" value={currentDashboard.gameId} />
                 <p className="font-medium text-foreground">Pickpocket</p>
-                <Label htmlFor="pickpocket-target">Target</Label>
-                <select
-                  className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
-                  id="pickpocket-target"
-                  name="targetParticipantId"
-                  disabled={!canUseActions}
-                >
-                  {currentDashboard.players.map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.characterName ?? player.actorName}
-                    </option>
-                  ))}
-                </select>
-                <Button type="submit" variant="outline" disabled={!canUseActions}>
-                  Resolve Pickpocket
-                </Button>
+                {pickpocketTargets.length > 0 ? (
+                  <>
+                    <Label htmlFor="pickpocket-target">Target</Label>
+                    <select
+                      className="h-11 w-full rounded-xl border border-input bg-background/70 px-4 py-2 text-sm"
+                      id="pickpocket-target"
+                      name="targetParticipantId"
+                      disabled={!canUseActions}
+                    >
+                      {pickpocketTargets.map((player) => (
+                        <option key={player.id} value={player.id}>
+                          {player.characterName ?? player.actorName}
+                        </option>
+                      ))}
+                    </select>
+                    <Button type="submit" variant="outline" disabled={!canUseActions}>
+                      Resolve Pickpocket
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No one you can target is carrying a stealable item right now.
+                  </p>
+                )}
               </form>
 
               <form action={proposeTradeAction} className="grid gap-3 rounded-2xl border bg-white/80 p-4">

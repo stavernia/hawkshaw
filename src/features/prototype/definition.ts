@@ -18,6 +18,7 @@ export type PrototypeKnowledgeDefinition = {
 export type PrototypeRoleStageBriefing = {
   summary: string;
   nextSteps: string[];
+  starterHints?: string[];
 };
 
 export type PrototypeRolePerformanceDefinition = {
@@ -54,6 +55,7 @@ export type PrototypeRoomResult = {
   clueCode?: string;
   itemCode?: string;
   stage?: "act-1" | "act-2";
+  excludedRoleCodes?: string[];
 };
 
 export type PrototypeSecretDefinition = {
@@ -311,6 +313,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         setup: {
           summary:
             "You are Victor Hale. This weekend exists because you called everyone here to settle succession, control the business narrative, and keep the most dangerous truths in your own hands.",
+          starterHints: [
+            "Start by talking to Daniel and Marcus separately. You want to feel who expects your favor and who fears your judgment.",
+            "Keep an eye on who notices the safe key, the watch, or the missing dagger display before dinner even settles.",
+            "If someone feels too comfortable in your Study or too interested in the business records, remember it.",
+          ],
           nextSteps: [
             "Review who is under pressure before dinner begins.",
             "Keep the safe key and your watch secure.",
@@ -320,6 +327,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "act-1": {
           summary:
             "The dinner is in motion. Your job is to keep command of the room long enough to judge who should inherit control and who might become a liability.",
+          starterHints: [
+            "Press Daniel and Marcus from different angles and see who handles pressure badly.",
+            "If Eleanor or Sofia seems overly careful around each other, note it without showing your hand.",
+            "Do not leave the safe key, watch, or any business paper where someone desperate can move it.",
+          ],
           nextSteps: [
             "Read Daniel and Marcus carefully.",
             "Protect the safe key and anything tied to the books.",
@@ -402,6 +414,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         setup: {
           summary:
             "You are Eleanor Hale. Publicly, you are the poised wife keeping the weekend elegant. Privately, you need to protect your secret with Sofia and judge how dangerous Victor's announcement may be.",
+          starterHints: [
+            "Begin with Sofia and Jack. One is someone you must protect, and one may blow up the evening for reasons of his own.",
+            "If anyone gets too close to your receipt, redirect them fast or move it somewhere safer through social play.",
+            "Listen for whether Victor sounds settled on a successor or is still toying with people.",
+          ],
           nextSteps: [
             "Orient yourself to the succession tension in the room.",
             "Keep the hotel receipt out of careless hands.",
@@ -411,6 +428,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "act-1": {
           summary:
             "Dinner has started. You should look composed, learn who Victor intends to favor, and quietly stop your personal scandal from becoming easy leverage.",
+          starterHints: [
+            "Talk to Victor or anyone hovering near him to confirm whether Marcus is really in favor.",
+            "Use the Rooms tab if you need a non-social way to check what the cabin is hiding while the others posture.",
+            "If Jack feels too interested in the house systems or too pleased with the tension, keep that in view.",
+          ],
           nextSteps: [
             "Confirm Victor's intended successor.",
             "Track whether Jack's presence is becoming a real threat.",
@@ -493,6 +515,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         setup: {
           summary:
             "You are Daniel Hale, Victor's son, and you believe tonight should end with the business pointed toward you. You expect the room to treat you like the natural heir even if Victor does not.",
+          starterHints: [
+            "Start with Victor and Marcus. One controls your future, and the other may be standing in your way.",
+            "Decide early whether the dagger helps your image, your intimidation, or your problems, then treat it accordingly.",
+            "If Jack is in the room, ask yourself whether Victor brought him here to humiliate someone.",
+          ],
           nextSteps: [
             "Notice who is standing too close to Victor's authority.",
             "Decide how you want to carry yourself before dinner starts.",
@@ -502,6 +529,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "act-1": {
           summary:
             "The succession pressure is live. You need to decide how openly to challenge Victor, watch Marcus closely, and make sure your anger does not become the only story anyone remembers.",
+          starterHints: [
+            "Use your Act 1 decision early so you know whether you are playing public confrontation or private resentment.",
+            "Watch who Victor speaks to in confidence and who drifts toward the Study once dinner is underway.",
+            "If you move the dagger or hand it off, make sure you remember exactly to whom and why.",
+          ],
           nextSteps: [
             "Use your decision to define how the room sees your temper.",
             "Look for signs Victor is favoring Marcus.",
@@ -578,6 +610,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         setup: {
           summary:
             "You are Marcus Reed, Victor's partner. You know the business is dirtier than the family admits, and tonight may determine whether you rise, fall, or get blamed for everything.",
+          starterHints: [
+            "Start by checking Victor's mood and Daniel's confidence. Those two reads tell you how dangerous the dinner will be.",
+            "Keep the ledger page somewhere deliberate, not merely hidden where panic can make you lose track of it.",
+            "If anyone starts sniffing around the Study too early, note them immediately.",
+          ],
           nextSteps: [
             "Keep the ledger page secure.",
             "Judge whether Victor still intends to favor you or expose you.",
@@ -587,6 +624,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "act-1": {
           summary:
             "The dinner is active and pressure is rising. You need to confirm whether Victor really plans to choose you, while managing the records and staying outwardly calm.",
+          starterHints: [
+            "If you can, learn whether the Study safe or hidden compartment has already been disturbed before the room turns chaotic.",
+            "Anyone who mentions auditors, records, or Victor's private papers is a threat worth tracking.",
+            "Do not let Daniel's emotion dominate the room uncontested if Victor is quietly moving toward you.",
+          ],
           nextSteps: [
             "Protect the ledger page.",
             "Check whether the Study safe or hidden compartment has already been touched.",
@@ -663,6 +705,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         setup: {
           summary:
             "You are Sofia Marlow, officially here as a consultant and unofficially here for Eleanor. You do not belong to the family power struggle, which makes you both harder to read and easier to underestimate.",
+          starterHints: [
+            "Start by reading Eleanor, Marcus, and Victor. One matters personally, and the other two may reveal what this weekend is really about.",
+            "If you sense your secret with Eleanor is exposed, shift attention rather than clinging to the same conversation.",
+            "You are well placed to notice patterns others ignore, so trust the first odd detail that feels too sharp to be nothing.",
+          ],
           nextSteps: [
             "Stay socially plausible while reading the room.",
             "Watch for signs that your secret with Eleanor is already exposed.",
@@ -672,6 +719,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "act-1": {
           summary:
             "Dinner is live. Your job is to understand the succession decision, protect Eleanor, and work out whether the real danger tonight is social scandal or something larger.",
+          starterHints: [
+            "If you do not know where to go, start with the bedroom or kitchen threads around the receipt and whispered gossip.",
+            "Marcus and the Study deserve attention if the room starts sounding more frightened than merely dramatic.",
+            "Ask yourself after each conversation whether what you learned points to scandal, money, or power.",
+          ],
           nextSteps: [
             "Confirm who Victor intends to elevate.",
             "Check whether your affair evidence is still contained.",
@@ -748,6 +800,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         setup: {
           summary:
             "You are Jack Mercer, invited under the excuse of storm prep and cabin systems. In truth, Victor ruined your life and you came up this mountain with your own agenda.",
+          starterHints: [
+            "Start by sizing up Victor and the Basement. One is the reason you are here, and the other is where your leverage lives.",
+            "Keep the fuse puller on you or move it somewhere intentional before the house gets curious.",
+            "Use the fact that you already look suspicious to say bold things while learning who scares easiest.",
+          ],
           nextSteps: [
             "Keep your fuse puller out of sight.",
             "Read whether Victor thinks he owns you or fears you.",
@@ -757,6 +814,11 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
         "act-1": {
           summary:
             "The house is distracted by succession, which gives you room to move. Your challenge is to keep your sabotage separate from the far worse thing someone else may do with it.",
+          starterHints: [
+            "Visit or think about the Basement early if you want control over the blackout thread rather than excuses later.",
+            "If you can get hold of something valuable, do it in a way that gives you leverage instead of random chaos.",
+            "Watch Marcus and Daniel closely. If the room is busy hating each other, someone may use your chaos for something bigger.",
+          ],
           nextSteps: [
             "Check what the Basement can reveal or expose.",
             "Get hold of something valuable if the opportunity appears.",
@@ -840,18 +902,21 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
           text: "You catch Victor warning someone that tonight will leave only one person in control.",
           clueCode: "victor-called-marcus-back",
           stage: "act-1",
+          excludedRoleCodes: ["victor-hale", "marcus-reed"],
         },
         {
           key: "living-listen-2",
           text: "Someone mutters that Daniel made sure everyone saw him with the dagger before dinner.",
           clueCode: "dagger-seen-with-daniel",
           stage: "act-1",
+          excludedRoleCodes: ["daniel-hale"],
         },
         {
           key: "living-listen-3",
           text: "Jack casually asks how long the cabin would stay dark if the main panel tripped before the backup lights recovered.",
           clueCode: "jack-counted-the-lights",
           stage: "act-1",
+          excludedRoleCodes: ["jack-mercer"],
         },
       ],
     },
@@ -885,6 +950,7 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
           text: "From the hallway you hear Victor snap that auditors only become a problem when Marcus loses his nerve.",
           clueCode: "marcus-auditor-panic",
           stage: "act-1",
+          excludedRoleCodes: ["victor-hale", "marcus-reed"],
         },
         {
           key: "study-listen-2",
@@ -918,6 +984,7 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
           text: "Two voices argue about whether Sofia's receipt should have been burned before anyone saw the dates.",
           clueCode: "matching-spa-receipt",
           stage: "act-1",
+          excludedRoleCodes: ["eleanor-hale", "sofia-vale"],
         },
         {
           key: "kitchen-listen-2",
@@ -951,6 +1018,7 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
           text: "Through the wall you hear Eleanor promise Sofia that Victor still knows nothing about them.",
           clueCode: "midnight-balcony-whisper",
           stage: "act-1",
+          excludedRoleCodes: ["eleanor-hale", "sofia-vale"],
         },
         {
           key: "bedroom-listen-2",
@@ -990,6 +1058,7 @@ export const PROTOTYPE_SCENARIO: PrototypeScenarioDefinition = {
           text: "You overhear that Jack asked exactly how long the backup lights would take to recover if the main panel tripped.",
           clueCode: "jack-generator-questions",
           stage: "act-1",
+          excludedRoleCodes: ["jack-mercer"],
         },
         {
           key: "basement-listen-2",

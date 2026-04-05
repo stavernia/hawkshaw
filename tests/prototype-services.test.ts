@@ -2,6 +2,35 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockTx, mockPrisma } = vi.hoisted(() => {
   const tx = {
+    scenarioDefinition: {
+      update: vi.fn(),
+    },
+    scenarioRole: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioRoom: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioClue: {
+      update: vi.fn(),
+      create: vi.fn(),
+      findFirstOrThrow: vi.fn(),
+    },
+    scenarioItem: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioGoal: {
+      findMany: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioDecision: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
     game: {
       findUniqueOrThrow: vi.fn(),
       update: vi.fn(),
@@ -13,15 +42,9 @@ const { mockTx, mockPrisma } = vi.hoisted(() => {
       findMany: vi.fn(),
       update: vi.fn(),
     },
-    scenarioGoal: {
-      findMany: vi.fn(),
-    },
     playerGoalState: {
       createMany: vi.fn(),
       update: vi.fn(),
-    },
-    scenarioClue: {
-      findFirstOrThrow: vi.fn(),
     },
     playerClue: {
       upsert: vi.fn(),
@@ -32,8 +55,37 @@ const { mockTx, mockPrisma } = vi.hoisted(() => {
   } as const;
 
   const prisma = {
+    systemSetting: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
     scenarioDefinition: {
       findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    scenarioRole: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioRoom: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioClue: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioItem: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioGoal: {
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    scenarioDecision: {
+      update: vi.fn(),
+      create: vi.fn(),
     },
     game: {
       findUnique: vi.fn(),
@@ -64,16 +116,49 @@ import {
 describe("prototype services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.systemSetting.findUnique.mockResolvedValue(null);
+    mockPrisma.systemSetting.upsert.mockResolvedValue(undefined);
     mockPrisma.scenarioDefinition.findUnique.mockResolvedValue({
       id: "scenario-1",
       slug: "blackout-at-hale-cabin",
       title: "Blackout at Hale Cabin",
       summary: "Summary",
       playerCount: 6,
+      roles: [],
       rooms: [{ id: "room-1" }],
+      clues: [],
+      items: [],
+      goals: [],
+      decision: null,
     });
+    mockPrisma.scenarioDefinition.update.mockResolvedValue(undefined);
+    mockPrisma.scenarioRole.update.mockResolvedValue(undefined);
+    mockPrisma.scenarioRole.create.mockResolvedValue({ id: "role-created" });
+    mockPrisma.scenarioRoom.update.mockResolvedValue(undefined);
+    mockPrisma.scenarioRoom.create.mockResolvedValue(undefined);
+    mockPrisma.scenarioClue.update.mockResolvedValue(undefined);
+    mockPrisma.scenarioClue.create.mockResolvedValue(undefined);
+    mockPrisma.scenarioItem.update.mockResolvedValue(undefined);
+    mockPrisma.scenarioItem.create.mockResolvedValue(undefined);
+    mockPrisma.scenarioGoal.update.mockResolvedValue(undefined);
+    mockPrisma.scenarioGoal.create.mockResolvedValue(undefined);
+    mockPrisma.scenarioDecision.update.mockResolvedValue(undefined);
+    mockPrisma.scenarioDecision.create.mockResolvedValue(undefined);
     mockPrisma.game.findUnique.mockResolvedValue(undefined);
     mockPrisma.game.findFirst.mockResolvedValue(undefined);
+    mockTx.scenarioDefinition.update.mockResolvedValue(undefined);
+    mockTx.scenarioRole.update.mockResolvedValue(undefined);
+    mockTx.scenarioRole.create.mockResolvedValue({ id: "role-created" });
+    mockTx.scenarioRoom.update.mockResolvedValue(undefined);
+    mockTx.scenarioRoom.create.mockResolvedValue(undefined);
+    mockTx.scenarioClue.update.mockResolvedValue(undefined);
+    mockTx.scenarioClue.create.mockResolvedValue(undefined);
+    mockTx.scenarioItem.update.mockResolvedValue(undefined);
+    mockTx.scenarioItem.create.mockResolvedValue(undefined);
+    mockTx.scenarioGoal.update.mockResolvedValue(undefined);
+    mockTx.scenarioGoal.create.mockResolvedValue(undefined);
+    mockTx.scenarioDecision.update.mockResolvedValue(undefined);
+    mockTx.scenarioDecision.create.mockResolvedValue(undefined);
     mockPrisma.gameParticipant.findMany.mockResolvedValue([]);
     mockTx.gameParticipant.update.mockResolvedValue(undefined);
     mockTx.playerGoalState.update.mockResolvedValue(undefined);

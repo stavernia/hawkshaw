@@ -53,7 +53,7 @@ export default async function ScopedRoomEntryPage({
     notFound();
   }
 
-  const { participant, roomState, stage, recentLogs } = roomView;
+  const { participant, roomState, stage, recentLogs, searchAvailable, eavesdropAvailable } = roomView;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-6 py-12 md:px-10">
@@ -93,7 +93,7 @@ export default async function ScopedRoomEntryPage({
               <input name="actingParticipantId" type="hidden" value={participant.id} />
               <input name="gameId" type="hidden" value={gameId} />
               <input name="roomCode" type="hidden" value={code} />
-              <Button className="w-full justify-center" disabled={!["act-1", "act-2"].includes(stage)} type="submit">
+              <Button className="w-full justify-center" disabled={!["act-1", "act-2"].includes(stage) || !searchAvailable} type="submit">
                 Search Room
               </Button>
             </form>
@@ -101,10 +101,26 @@ export default async function ScopedRoomEntryPage({
               <input name="actingParticipantId" type="hidden" value={participant.id} />
               <input name="gameId" type="hidden" value={gameId} />
               <input name="roomCode" type="hidden" value={code} />
-              <Button className="w-full justify-center" disabled={!["act-1", "act-2"].includes(stage)} type="submit" variant="outline">
+              <Button
+                className="w-full justify-center"
+                disabled={!["act-1", "act-2"].includes(stage) || !eavesdropAvailable}
+                type="submit"
+                variant="outline"
+              >
                 Eavesdrop
               </Button>
             </form>
+            {["act-1", "act-2"].includes(stage) ? (
+              <div className="space-y-1 rounded-2xl border bg-white/80 p-4 text-sm">
+                <p className="font-medium text-foreground">Availability</p>
+                <p className="text-muted-foreground">
+                  Search: {searchAvailable ? "available" : "no results left for this act"}.
+                </p>
+                <p className="text-muted-foreground">
+                  Eavesdrop: {eavesdropAvailable ? "available" : "no overheard result left for this act"}.
+                </p>
+              </div>
+            ) : null}
             <Link className="text-sm font-medium text-primary" href={`${SITE_ROUTES.gamePlayer(gameId)}?as=${participant.id}`} prefetch={false}>
               Back to character dashboard
             </Link>

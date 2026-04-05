@@ -12,8 +12,8 @@ import {
   startPhaseOneAction,
   triggerEventAction,
 } from "@/src/server/actions/prototype";
-import { requireCurrentSessionUser } from "@/src/lib/auth/session";
-import { getHostGameDetailForGame, getHostScenarioViewForGame } from "@/src/server/services/prototype";
+import { requireCurrentUser } from "@/src/lib/auth/session";
+import { buildHostScenarioViewFromHostGame, getHostGameDetailForGame } from "@/src/server/services/prototype";
 import { SITE_ROUTES } from "@/src/config/routes";
 
 export const dynamic = "force-dynamic";
@@ -52,15 +52,14 @@ export default async function GameHostPage({
   const { gameId } = await params;
   const { section } = await searchParams;
   const activeSection = getHostSection(section);
-  const user = await requireCurrentSessionUser(SITE_ROUTES.gameHost(gameId));
-  const [hostGame, scenarioView] = await Promise.all([
-    getHostGameDetailForGame(user.id, gameId),
-    getHostScenarioViewForGame(user.id, gameId),
-  ]);
+  const user = await requireCurrentUser(SITE_ROUTES.gameHost(gameId));
+  const hostGame = await getHostGameDetailForGame(user.id, gameId);
 
-  if (!hostGame || !scenarioView) {
+  if (!hostGame) {
     notFound();
   }
+
+  const scenarioView = buildHostScenarioViewFromHostGame(hostGame);
 
   return (
     <div className="grid gap-4 md:gap-6">

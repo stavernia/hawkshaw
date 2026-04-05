@@ -88,6 +88,9 @@ const CLUE_VISIBILITY_SOURCE = {
   DECISION_OUTCOME: "DECISION_OUTCOME",
 } as const satisfies Record<string, ClueVisibilitySource>;
 
+const PROTOTYPE_SCENARIO_SYNC_KEY = `prototype-scenario-sync:${PROTOTYPE_SCENARIO.slug}`;
+const PROTOTYPE_SCENARIO_SYNC_VERSION = "2026-04-04-cabin-prototype-v1";
+
 function parseJsonArray<T>(value: Prisma.JsonValue): T[] {
   if (!Array.isArray(value)) {
     return [];
@@ -615,6 +618,13 @@ function buildHostScenarioView(input: {
   };
 }
 
+export function buildHostScenarioViewFromHostGame(hostGame: HostGameDetail): HostScenarioView {
+  return buildHostScenarioView({
+    branchLabel: hostGame.branchLabel,
+    participants: hostGame.participants,
+  });
+}
+
 async function requireOwnedGame(
   db: Prisma.TransactionClient | typeof prisma,
   gameId: string,
@@ -900,21 +910,262 @@ async function createLog(
 }
 
 export async function ensurePrototypeScenario(): Promise<ScenarioSummary> {
-  const existing = await prisma.scenarioDefinition.findUnique({
-    where: { slug: PROTOTYPE_SCENARIO.slug },
-    include: {
-      rooms: true,
-    },
-  });
+  const [existing, syncSetting] = await Promise.all([
+    prisma.scenarioDefinition.findUnique({
+      where: { slug: PROTOTYPE_SCENARIO.slug },
+      include: {
+        roles: true,
+        rooms: true,
+        clues: true,
+        items: true,
+        goals: true,
+        decision: true,
+      },
+    }),
+    prisma.systemSetting.findUnique({
+      where: { key: PROTOTYPE_SCENARIO_SYNC_KEY },
+    }),
+  ]);
 
   if (existing) {
+    if (syncSetting?.valueJson === PROTOTYPE_SCENARIO_SYNC_VERSION) {
+      return {
+        id: existing.id,
+        slug: existing.slug,
+        title: existing.title,
+        summary: existing.summary,
+        playerCount: existing.playerCount,
+        roomCount: existing.rooms.length,
+      };
+    }
+
+    await prisma.scenarioDefinition.update({
+      where: { id: existing.id },
+      data: {
+        title: PROTOTYPE_SCENARIO.title,
+        summary: PROTOTYPE_SCENARIO.summary,
+        playerCount: PROTOTYPE_SCENARIO.playerCount,
+        actionBudgetPerAct: PROTOTYPE_SCENARIO.actionBudgetPerAct,
+        eventTitle: PROTOTYPE_SCENARIO.eventTitle,
+        eventDescription: PROTOTYPE_SCENARIO.eventDescription,
+        revealPayloadJson: PROTOTYPE_SCENARIO.reveal,
+      },
+    });
+
+    const roleIdByCode = new Map(existing.roles.map((role) => [role.code, role.id]));
+
+    for (const role of PROTOTYPE_SCENARIO.roles) {
+      const existingRoleId = roleIdByCode.get(role.code);
+
+      if (existingRoleId) {
+        await prisma.scenarioRole.update({
+          where: { id: existingRoleId },
+          data: {
+            slotNumber: role.slotNumber,
+            characterName: role.characterName,
+            characterTitle: role.characterTitle,
+            publicDescription: role.publicDescription,
+            privateDescription: role.privateDescription,
+            actTwoBriefing: role.actTwoBriefing,
+          },
+        });
+        continue;
+      }
+
+      const createdRole = await prisma.scenarioRole.create({
+        data: {
+          scenarioId: existing.id,
+          code: role.code,
+          slotNumber: role.slotNumber,
+          characterName: role.characterName,
+          characterTitle: role.characterTitle,
+          publicDescription: role.publicDescription,
+          privateDescription: role.privateDescription,
+          actTwoBriefing: role.actTwoBriefing,
+        },
+      });
+      roleIdByCode.set(role.code, createdRole.id);
+    }
+
+    for (const room of PROTOTYPE_SCENARIO.rooms) {
+      const existingRoom = existing.rooms.find((entry) => entry.code === room.code);
+
+      if (existingRoom) {
+        await prisma.scenarioRoom.update({
+          where: { id: existingRoom.id },
+          data: {
+            name: room.name,
+            description: room.description,
+            searchResultsJson: room.searchResults as Prisma.InputJsonValue,
+            eavesdropJson: room.eavesdropResults as Prisma.InputJsonValue,
+          },
+        });
+        continue;
+      }
+
+      await prisma.scenarioRoom.create({
+        data: {
+          scenarioId: existing.id,
+          code: room.code,
+          name: room.name,
+          description: room.description,
+          searchResultsJson: room.searchResults as Prisma.InputJsonValue,
+          eavesdropJson: room.eavesdropResults as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    for (const clue of PROTOTYPE_SCENARIO.clues) {
+      const existingClue = existing.clues.find((entry) => entry.code === clue.code);
+
+      if (existingClue) {
+        await prisma.scenarioClue.update({
+          where: { id: existingClue.id },
+          data: {
+            title: clue.title,
+            body: clue.body,
+          },
+        });
+        continue;
+      }
+
+      await prisma.scenarioClue.create({
+        data: {
+          scenarioId: existing.id,
+          code: clue.code,
+          title: clue.title,
+          body: clue.body,
+        },
+      });
+    }
+
+    for (const item of PROTOTYPE_SCENARIO.items) {
+      const existingItem = existing.items.find((entry) => entry.code === item.code);
+
+      if (existingItem) {
+        await prisma.scenarioItem.update({
+          where: { id: existingItem.id },
+          data: {
+            label: item.label,
+            description: item.description,
+            itemType: item.itemType,
+            isStealable: item.isStealable ?? true,
+            isPlantable: item.isPlantable ?? true,
+            isTradeable: item.isTradeable ?? true,
+          },
+        });
+        continue;
+      }
+
+      await prisma.scenarioItem.create({
+        data: {
+          scenarioId: existing.id,
+          code: item.code,
+          label: item.label,
+          description: item.description,
+          itemType: item.itemType,
+          isStealable: item.isStealable ?? true,
+          isPlantable: item.isPlantable ?? true,
+          isTradeable: item.isTradeable ?? true,
+        },
+      });
+    }
+
+    for (const goal of PROTOTYPE_SCENARIO.goals) {
+      const existingGoal = existing.goals.find((entry) => entry.code === goal.code);
+      const roleId = roleIdByCode.get(goal.roleCode);
+
+      if (!roleId) {
+        throw new Error(`Missing scenario role for goal sync: ${goal.roleCode}`);
+      }
+
+      if (existingGoal) {
+        await prisma.scenarioGoal.update({
+          where: { id: existingGoal.id },
+          data: {
+            roleId,
+            stage: goal.stage,
+            title: goal.title,
+            description: goal.description,
+            points: goal.points,
+            completionRuleJson: goal.rule as Prisma.InputJsonValue,
+          },
+        });
+        continue;
+      }
+
+      await prisma.scenarioGoal.create({
+        data: {
+          scenarioId: existing.id,
+          roleId,
+          code: goal.code,
+          stage: goal.stage,
+          title: goal.title,
+          description: goal.description,
+          points: goal.points,
+          completionRuleJson: goal.rule as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    const decisionMakerRoleId = roleIdByCode.get(PROTOTYPE_SCENARIO.decision.decisionMakerRoleCode);
+
+    if (!decisionMakerRoleId) {
+      throw new Error(`Missing decision maker role for scenario sync: ${PROTOTYPE_SCENARIO.decision.decisionMakerRoleCode}`);
+    }
+
+    if (existing.decision) {
+      await prisma.scenarioDecision.update({
+        where: { id: existing.decision.id },
+        data: {
+          decisionMakerRoleId,
+          code: PROTOTYPE_SCENARIO.decision.code,
+          title: PROTOTYPE_SCENARIO.decision.title,
+          description: PROTOTYPE_SCENARIO.decision.description,
+          optionALabel: PROTOTYPE_SCENARIO.decision.optionA.label,
+          optionBLabel: PROTOTYPE_SCENARIO.decision.optionB.label,
+          outcomeAKey: PROTOTYPE_SCENARIO.decision.optionA.outcomeKey,
+          outcomeBKey: PROTOTYPE_SCENARIO.decision.optionB.outcomeKey,
+          outcomeASummary: PROTOTYPE_SCENARIO.decision.optionA.summary,
+          outcomeBSummary: PROTOTYPE_SCENARIO.decision.optionB.summary,
+        },
+      });
+    } else {
+      await prisma.scenarioDecision.create({
+        data: {
+          scenarioId: existing.id,
+          decisionMakerRoleId,
+          code: PROTOTYPE_SCENARIO.decision.code,
+          title: PROTOTYPE_SCENARIO.decision.title,
+          description: PROTOTYPE_SCENARIO.decision.description,
+          optionALabel: PROTOTYPE_SCENARIO.decision.optionA.label,
+          optionBLabel: PROTOTYPE_SCENARIO.decision.optionB.label,
+          outcomeAKey: PROTOTYPE_SCENARIO.decision.optionA.outcomeKey,
+          outcomeBKey: PROTOTYPE_SCENARIO.decision.optionB.outcomeKey,
+          outcomeASummary: PROTOTYPE_SCENARIO.decision.optionA.summary,
+          outcomeBSummary: PROTOTYPE_SCENARIO.decision.optionB.summary,
+        },
+      });
+    }
+
+    await prisma.systemSetting.upsert({
+      where: { key: PROTOTYPE_SCENARIO_SYNC_KEY },
+      create: {
+        key: PROTOTYPE_SCENARIO_SYNC_KEY,
+        valueJson: PROTOTYPE_SCENARIO_SYNC_VERSION,
+      },
+      update: {
+        valueJson: PROTOTYPE_SCENARIO_SYNC_VERSION,
+      },
+    });
+
     return {
       id: existing.id,
       slug: existing.slug,
-      title: existing.title,
-      summary: existing.summary,
-      playerCount: existing.playerCount,
-      roomCount: existing.rooms.length,
+      title: PROTOTYPE_SCENARIO.title,
+      summary: PROTOTYPE_SCENARIO.summary,
+      playerCount: PROTOTYPE_SCENARIO.playerCount,
+      roomCount: PROTOTYPE_SCENARIO.rooms.length,
     };
   }
 
@@ -1168,7 +1419,6 @@ export async function getHostGameDetailForGame(
   gameId: string,
 ): Promise<HostGameDetail | null> {
   await ensurePrototypeScenario();
-
   const detail = await prisma.game.findFirst({
     where: {
       id: gameId,
@@ -1216,10 +1466,7 @@ export async function getHostScenarioViewForGame(
     return null;
   }
 
-  return buildHostScenarioView({
-    branchLabel: hostGame.branchLabel,
-    participants: hostGame.participants,
-  });
+  return buildHostScenarioViewFromHostGame(hostGame);
 }
 
 export async function joinGameWithUser(
@@ -1500,6 +1747,11 @@ async function buildPlayerDashboardView(input: {
       },
       include: {
         scenarioRole: true,
+        items: {
+          include: {
+            scenarioItem: true,
+          },
+        },
         knowledgeAbout: {
           where: {
             viewerParticipantId: participant.id,
@@ -1641,6 +1893,9 @@ async function buildPlayerDashboardView(input: {
           currentSummary:
             PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]?.summary ??
             participant.scenarioRole.privateDescription,
+          starterHints:
+            PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]
+              ?.starterHints ?? [],
           nextSteps:
             PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]?.nextSteps ?? [],
         }
@@ -1680,6 +1935,7 @@ async function buildPlayerDashboardView(input: {
       characterName: player.scenarioRole?.characterName,
       characterTitle: player.scenarioRole?.characterTitle,
       publicDescription: player.scenarioRole?.publicDescription,
+      canBePickpocketed: player.items.some((item) => item.quantity > 0 && item.scenarioItem.isStealable),
       knownFacts: buildKnownFactsForPlayer({
         viewerRoleCode: participant.scenarioRole?.code,
         subjectRoleCode: player.scenarioRole?.code,
@@ -1823,6 +2079,7 @@ async function getUserParticipantForGameLite(userId: string, gameId?: string) {
     },
     include: {
       game: true,
+      scenarioRole: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -1845,6 +2102,7 @@ async function getActingParticipantForRoom(input: {
       where: { id: input.actingParticipantId },
       include: {
         game: true,
+        scenarioRole: true,
       },
     });
 
@@ -1995,122 +2253,166 @@ export async function assignPlayerToSeat(
 }
 
 export async function startPhaseOne(gameId: string, createdByUserId: string) {
-  await prisma.$transaction(async (tx) => {
-    await requireOwnedGame(tx, gameId, createdByUserId);
-    const game = await tx.game.findUniqueOrThrow({
-      where: { id: gameId },
-      include: {
-        scenario: {
-          include: {
-            roles: true,
-            clues: true,
-            items: true,
-          },
+  await ensurePrototypeScenario();
+  await requireOwnedGame(prisma, gameId, createdByUserId);
+  const game = await prisma.game.findUniqueOrThrow({
+    where: { id: gameId },
+    include: {
+      scenario: {
+        include: {
+          roles: true,
+          clues: true,
+          items: true,
         },
-        participants: {
-          include: {
-            scenarioRole: true,
-            goals: {
-              include: {
-                scenarioGoal: true,
-              },
+      },
+      participants: {
+        include: {
+          scenarioRole: true,
+          goals: {
+            include: {
+              scenarioGoal: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
-    await tx.game.update({
+  const itemByCode = new Map(game.scenario.items.map((item) => [item.code, item.id]));
+  const clueByCode = new Map(game.scenario.clues.map((clue) => [clue.code, clue.id]));
+  const participantByRoleCode = new Map(
+    game.participants
+      .filter((participant) => participant.scenarioRole?.code)
+      .map((participant) => [participant.scenarioRole!.code, participant]),
+  );
+
+  const operations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.game.update({
       where: { id: gameId },
       data: {
-         stage: GAME_STAGE.ACT_1,
+        stage: GAME_STAGE.ACT_1,
         status: GAME_STATUS.ACTIVE,
       },
-    });
+    }),
+  ];
 
-    const itemByCode = new Map(game.scenario.items.map((item) => [item.code, item.id]));
-    const clueByCode = new Map(game.scenario.clues.map((clue) => [clue.code, clue.id]));
-    const participantByRoleCode = new Map(
-      game.participants
-        .filter((participant) => participant.scenarioRole?.code)
-        .map((participant) => [participant.scenarioRole!.code, participant]),
-    );
+  for (const participant of game.participants) {
+    const role = requireParticipantRole(participant);
+    const roleDef = PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === role.code)!;
 
-    for (const participant of game.participants) {
-      const role = requireParticipantRole(participant);
-      const roleDef = PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === role.code)!;
-
-      await tx.gameParticipant.updateMany({
+    operations.push(
+      prisma.gameParticipant.update({
         where: { id: participant.id },
         data: {
           actionsRemaining: game.scenario.actionBudgetPerAct,
         },
-      });
+      }),
+    );
 
-      for (const itemCode of roleDef.startingItemCodes) {
-        await tx.playerItem.upsert({
+    for (const itemCode of roleDef.startingItemCodes) {
+      const scenarioItemId = itemByCode.get(itemCode);
+
+      if (!scenarioItemId) {
+        throw new Error(`Missing scenario item for Act 1 start: ${itemCode}`);
+      }
+
+      operations.push(
+        prisma.playerItem.upsert({
           where: {
             participantId_scenarioItemId: {
               participantId: participant.id,
-              scenarioItemId: itemByCode.get(itemCode)!,
+              scenarioItemId,
             },
           },
           create: {
             participantId: participant.id,
-            scenarioItemId: itemByCode.get(itemCode)!,
+            scenarioItemId,
             quantity: 1,
           },
           update: {},
-        });
+        }),
+      );
+    }
+
+    for (const clueCode of roleDef.startingClueCodes) {
+      const scenarioClueId = clueByCode.get(clueCode);
+
+      if (!scenarioClueId) {
+        throw new Error(`Missing scenario clue for Act 1 start: ${clueCode}`);
       }
 
-      for (const clueCode of roleDef.startingClueCodes) {
-        await ensureClue(tx, participant.id, clueByCode.get(clueCode)!, CLUE_VISIBILITY_SOURCE.ROLE_INFO);
-      }
-
-      for (const knowledgeDef of roleDef.knowledge) {
-        const subject = participantByRoleCode.get(knowledgeDef.subjectRoleCode);
-
-        if (subject) {
-          await tx.playerKnowledge.upsert({
-            where: {
-              gameId_viewerParticipantId_subjectParticipantId_factKey: {
-                gameId,
-                viewerParticipantId: participant.id,
-                subjectParticipantId: subject.id,
-                factKey: knowledgeDef.factKey,
-              },
+      operations.push(
+        prisma.playerClue.upsert({
+          where: {
+            participantId_scenarioClueId: {
+              participantId: participant.id,
+              scenarioClueId,
             },
-            create: {
+          },
+          create: {
+            participantId: participant.id,
+            scenarioClueId,
+            source: CLUE_VISIBILITY_SOURCE.ROLE_INFO,
+          },
+          update: {},
+        }),
+      );
+    }
+
+    for (const knowledgeDef of roleDef.knowledge) {
+      const subject = participantByRoleCode.get(knowledgeDef.subjectRoleCode);
+
+      if (!subject) {
+        continue;
+      }
+
+      operations.push(
+        prisma.playerKnowledge.upsert({
+          where: {
+            gameId_viewerParticipantId_subjectParticipantId_factKey: {
               gameId,
               viewerParticipantId: participant.id,
               subjectParticipantId: subject.id,
               factKey: knowledgeDef.factKey,
-              title: knowledgeDef.title,
-              body: knowledgeDef.body,
             },
-            update: {},
-          });
-        }
-      }
+          },
+          create: {
+            gameId,
+            viewerParticipantId: participant.id,
+            subjectParticipantId: subject.id,
+            factKey: knowledgeDef.factKey,
+            title: knowledgeDef.title,
+            body: knowledgeDef.body,
+          },
+          update: {},
+        }),
+      );
+    }
 
-      for (const goal of participant.goals) {
-        await tx.playerGoalState.update({
+    for (const goal of participant.goals) {
+      operations.push(
+        prisma.playerGoalState.update({
           where: { id: goal.id },
           data: {
             status: getSetupGoalStatus(goal.scenarioGoal.stage),
           },
-        });
-      }
+        }),
+      );
     }
+  }
 
-    await createLog(tx, {
-      gameId,
-      actionType: ACTION_TYPE.ACT_STARTED,
-       stage: GAME_STAGE.ACT_1,
-      summary: "Act 1 has started.",
-    });
-  }, { timeout: 20000, maxWait: 10000 });
+  operations.push(
+    prisma.actionLog.create({
+      data: {
+        gameId,
+        actionType: ACTION_TYPE.ACT_STARTED,
+        stage: GAME_STAGE.ACT_1,
+        summary: "Act 1 has started.",
+      },
+    }),
+  );
+
+  await prisma.$transaction(operations);
 
   await recomputeGameGoals(prisma, gameId);
 }
@@ -2458,10 +2760,26 @@ export async function getRoomViewForUser(
     take: 5,
   });
 
+  const roleCode = participant.scenarioRole?.code;
+  const searchAvailable = !!selectNextRoomResult(
+    parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.searchResultsJson),
+    roomState.searchIndex,
+    mapGameStageToKey(participant.game.stage),
+    roleCode,
+  );
+  const eavesdropAvailable = !!selectNextRoomResult(
+    parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.eavesdropJson),
+    roomState.eavesdropIndex,
+    mapGameStageToKey(participant.game.stage),
+    roleCode,
+  );
+
   return {
     participant,
     roomState,
      stage: mapGameStageToKey(participant.game.stage),
+    searchAvailable,
+    eavesdropAvailable,
     recentLogs,
   };
 }
@@ -2502,8 +2820,18 @@ async function resolveRoomAction(
 
   const payload =
     action === "search"
-      ? selectNextRoomResult(parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.searchResultsJson), roomState.searchIndex, stage)
-      : selectNextRoomResult(parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.eavesdropJson), roomState.eavesdropIndex, stage);
+      ? selectNextRoomResult(
+          parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.searchResultsJson),
+          roomState.searchIndex,
+          stage,
+          participant.scenarioRole?.code,
+        )
+      : selectNextRoomResult(
+          parseJsonArray<PrototypeRoomResult>(roomState.scenarioRoom.eavesdropJson),
+          roomState.eavesdropIndex,
+          stage,
+          participant.scenarioRole?.code,
+        );
 
   if (!payload) {
     throw new Error("No results remain for this action.");

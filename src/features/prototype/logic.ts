@@ -176,8 +176,13 @@ export function selectNextRoomResult(
   results: PrototypeRoomResult[],
   index: number,
   stage: StageKey,
+  participantRoleCode?: string,
 ) {
-  const eligible = results.filter((result) => !result.stage || result.stage === stage);
+  const eligible = results.filter(
+    (result) =>
+      (!result.stage || result.stage === stage) &&
+      (!participantRoleCode || !result.excludedRoleCodes?.includes(participantRoleCode)),
+  );
 
   if (eligible.length === 0) {
     return null;
