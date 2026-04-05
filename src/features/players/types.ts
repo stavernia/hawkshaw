@@ -69,6 +69,12 @@ export type PlayerDashboardView = {
     publicDescription: string;
     privateDescription: string;
     actTwoBriefing?: string;
+    howToAct: {
+      vibe: string;
+      inspiration: string;
+      quirk: string;
+      playTips: string[];
+    };
     currentSummary: string;
     nextSteps: string[];
   };

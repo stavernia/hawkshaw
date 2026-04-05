@@ -1631,6 +1631,13 @@ async function buildPlayerDashboardView(input: {
           publicDescription: participant.scenarioRole.publicDescription,
           privateDescription: participant.scenarioRole.privateDescription,
           actTwoBriefing: isEventOneOrLater(stageKey) ? participant.scenarioRole.actTwoBriefing ?? undefined : undefined,
+          howToAct:
+            PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.performance ?? {
+              vibe: participant.scenarioRole.privateDescription,
+              inspiration: "Play the strongest version of this role you can imagine.",
+              quirk: "Choose one small repeated behavior and commit to it.",
+              playTips: [],
+            },
           currentSummary:
             PROTOTYPE_SCENARIO.roles.find((entry) => entry.code === participant.scenarioRole!.code)?.stageBriefings[roleBriefingStageKey]?.summary ??
             participant.scenarioRole.privateDescription,

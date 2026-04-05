@@ -181,6 +181,32 @@ export function PlayerDashboardClient({
               <p className="mt-3 break-words text-muted-foreground">{currentDashboard.role?.publicDescription}</p>
               <p className="mt-3 break-words text-foreground">{currentDashboard.role?.privateDescription}</p>
             </div>
+            {currentDashboard.role?.howToAct ? (
+              <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                <p className="font-medium text-foreground">How To Act</p>
+                <p className="mt-2 break-words text-muted-foreground">{currentDashboard.role.howToAct.vibe}</p>
+                <div className="mt-3 grid gap-3">
+                  <div className="rounded-xl border bg-background/70 p-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Inspiration</p>
+                    <p className="mt-1 break-words text-foreground">{currentDashboard.role.howToAct.inspiration}</p>
+                  </div>
+                  <div className="rounded-xl border bg-background/70 p-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Quirk</p>
+                    <p className="mt-1 break-words text-foreground">{currentDashboard.role.howToAct.quirk}</p>
+                  </div>
+                </div>
+                {currentDashboard.role.howToAct.playTips.length ? (
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Play Tips</p>
+                    <ul className="mt-2 grid gap-1 text-muted-foreground">
+                      {currentDashboard.role.howToAct.playTips.map((tip, index) => (
+                        <li key={`${currentDashboard.role?.code}-act-tip-${index}`}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
               <p className="font-medium text-foreground">Your Situation Right Now</p>
               <p className="mt-2 break-words text-muted-foreground">{currentDashboard.role?.currentSummary}</p>

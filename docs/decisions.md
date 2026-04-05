@@ -201,6 +201,24 @@ Consequences:
 - Local and hosted environments need that env var aligned with the intended app URL.
 - Supabase redirect allowlists must include the configured callback domain.
 
+## 2026-04-04 - accepted
+
+Decision:
+Add a player-facing "How To Act" section to role overview content so first-time players get a clear
+ performance target, not just lore and goals.
+
+Context:
+For live prototype play, players often need a quick handle on tone and behavior before they can
+ make good use of their goals and knowledge. The overview already orients them narratively, but it
+ did not yet give them a concise acting guide for the role.
+
+Consequences:
+
+- Each prototype role now includes short performance guidance, an inspiration line, a quirk, and
+  a few play tips in the scenario definition.
+- The player Overview tab now shows a dedicated "How To Act" card.
+- This is guidance only; it does not affect game logic or scoring.
+
 ## 2026-03-31 - accepted
 
 Decision:
