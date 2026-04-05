@@ -710,3 +710,19 @@ Consequences:
 - Room pages now compute whether search or eavesdrop has a valid remaining result for the acting
   role and current act, and disable the buttons when not.
 - The room UI now explains action availability so players understand why a button is disabled.
+
+## 2026-04-04 - accepted
+
+Decision:
+Raise the cabin prototype action budget to 8 actions per act.
+
+Context:
+Live play showed that the previous action budget was too tight for players who were still learning
+the app and the scenario at the same time. The prototype benefits more from giving players enough
+room to explore rooms, items, and social moves than from strict scarcity.
+
+Consequences:
+
+- Act 1 and Act 2 now each grant 8 actions per player.
+- The seeded scenario sync version was bumped so existing games update to the new budget instead of
+  staying on the earlier cached definition.

@@ -89,7 +89,7 @@ const CLUE_VISIBILITY_SOURCE = {
 } as const satisfies Record<string, ClueVisibilitySource>;
 
 const PROTOTYPE_SCENARIO_SYNC_KEY = `prototype-scenario-sync:${PROTOTYPE_SCENARIO.slug}`;
-const PROTOTYPE_SCENARIO_SYNC_VERSION = "2026-04-04-cabin-prototype-v1";
+const PROTOTYPE_SCENARIO_SYNC_VERSION = "2026-04-04-cabin-prototype-v2";
 
 function parseJsonArray<T>(value: Prisma.JsonValue): T[] {
   if (!Array.isArray(value)) {
