@@ -30,6 +30,14 @@ function stageLabel(stage?: string) {
   return stage.replace("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function actionBudgetLabel(actionBudgetPerAct: number) {
+  return actionBudgetPerAct < 0 ? "Unlimited" : String(actionBudgetPerAct);
+}
+
+function actionsRemainingLabel(actionsRemaining: number) {
+  return actionsRemaining < 0 ? "Unlimited actions" : `${actionsRemaining} actions remaining`;
+}
+
 function getHostSection(section?: string): HostSection {
   if (section && HOST_SECTIONS.includes(section as HostSection)) {
     return section as HostSection;
@@ -156,7 +164,7 @@ export default async function GameHostPage({
               </div>
               <div className="rounded-2xl border bg-white/80 p-4 text-sm">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Actions Per Act</p>
-                <p className="mt-2 font-medium text-foreground">{hostGame.actionBudgetPerAct}</p>
+                <p className="mt-2 font-medium text-foreground">{actionBudgetLabel(hostGame.actionBudgetPerAct)}</p>
               </div>
             </CardContent>
           </Card>
@@ -245,7 +253,7 @@ export default async function GameHostPage({
                       <div>
                         <p className="break-words text-xl font-medium leading-none text-foreground sm:text-2xl">{participant.characterName}</p>
                         <p className="mt-1 break-words text-sm text-muted-foreground">
-                          {participant.characterTitle} · {participant.actionsRemaining} actions remaining
+                          {participant.characterTitle} · {actionsRemainingLabel(participant.actionsRemaining)}
                         </p>
                       </div>
                     </div>

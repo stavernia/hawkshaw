@@ -89,7 +89,7 @@ const CLUE_VISIBILITY_SOURCE = {
 } as const satisfies Record<string, ClueVisibilitySource>;
 
 const PROTOTYPE_SCENARIO_SYNC_KEY = `prototype-scenario-sync:${PROTOTYPE_SCENARIO.slug}`;
-const PROTOTYPE_SCENARIO_SYNC_VERSION = "2026-04-04-cabin-prototype-v2";
+const PROTOTYPE_SCENARIO_SYNC_VERSION = "2026-04-04-cabin-prototype-v3";
 
 function parseJsonArray<T>(value: Prisma.JsonValue): T[] {
   if (!Array.isArray(value)) {
@@ -873,7 +873,18 @@ async function removeItemByScenarioItemId(
 async function consumeAction(tx: Prisma.TransactionClient, participantId: string) {
   const participant = await tx.gameParticipant.findUniqueOrThrow({
     where: { id: participantId },
+    include: {
+      game: {
+        include: {
+          scenario: true,
+        },
+      },
+    },
   });
+
+  if (participant.game.scenario.actionBudgetPerAct < 0) {
+    return;
+  }
 
   if (participant.actionsRemaining <= 0) {
     throw new Error("No actions remaining this stage.");
