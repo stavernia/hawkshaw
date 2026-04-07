@@ -1869,6 +1869,8 @@ async function buildPlayerDashboardView(input: {
     scenarioSummary: stageContent.summary,
     eventTitle: stageContent.eventTitle,
     eventDescription: stageContent.eventDescription,
+    crimeSceneTitle: stageContent.crimeSceneTitle,
+    crimeSceneDescription: stageContent.crimeSceneDescription,
     participant: {
       id: participant.id,
       actorName: playerLabelFromSeat(participant),
@@ -2429,165 +2431,205 @@ export async function startPhaseOne(gameId: string, createdByUserId: string) {
 }
 
 export async function triggerEventPhaseTwo(gameId: string, createdByUserId: string) {
-  await prisma.$transaction(async (tx) => {
-    await requireOwnedGame(tx, gameId, createdByUserId);
-    const game = await tx.game.findUniqueOrThrow({
-      where: { id: gameId },
-      include: {
-        scenario: {
-          include: {
-            clues: true,
-          },
+  await requireOwnedGame(prisma, gameId, createdByUserId);
+  const game = await prisma.game.findUniqueOrThrow({
+    where: { id: gameId },
+    include: {
+      scenario: {
+        include: {
+          clues: true,
         },
-        participants: {
-          include: {
-            goals: {
-              include: {
-                scenarioGoal: true,
-              },
+      },
+      participants: {
+        include: {
+          goals: {
+            include: {
+              scenarioGoal: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
-    await tx.game.update({
+  const clueByCode = new Map(game.scenario.clues.map((clue) => [clue.code, clue.id]));
+  const branchKey = game.decisionOutcomeKey ?? PROTOTYPE_SCENARIO.decision.optionA.outcomeKey;
+  const awardedClueCodes = getEventClueCodes({
+    everyoneClueCodes: PROTOTYPE_SCENARIO.eventAwards.everyoneClueCodes,
+    branchClueCodes: PROTOTYPE_SCENARIO.eventAwards.branchClueCodes,
+    branchKey,
+  });
+  const branchClueCodes = new Set(PROTOTYPE_SCENARIO.eventAwards.branchClueCodes[branchKey] ?? []);
+  const operations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.game.update({
       where: { id: gameId },
       data: {
-         stage: GAME_STAGE.EVENT_1,
+        stage: GAME_STAGE.EVENT_1,
         eventOneTriggeredAt: new Date(),
       },
-    });
+    }),
+  ];
 
-    const clueByCode = new Map(game.scenario.clues.map((clue) => [clue.code, clue.id]));
-    const branchKey = game.decisionOutcomeKey ?? PROTOTYPE_SCENARIO.decision.optionA.outcomeKey;
-    const awardedClueCodes = getEventClueCodes({
-      everyoneClueCodes: PROTOTYPE_SCENARIO.eventAwards.everyoneClueCodes,
-      branchClueCodes: PROTOTYPE_SCENARIO.eventAwards.branchClueCodes,
-      branchKey,
-    });
-
-    for (const participant of game.participants) {
-      for (const clueCode of awardedClueCodes) {
-        await ensureClue(
-          tx,
-          participant.id,
-          clueByCode.get(clueCode)!,
-          PROTOTYPE_SCENARIO.eventAwards.branchClueCodes[branchKey]?.includes(clueCode)
-            ? CLUE_VISIBILITY_SOURCE.DECISION_OUTCOME
-            : CLUE_VISIBILITY_SOURCE.EVENT_UPDATE,
-        );
+  for (const participant of game.participants) {
+    for (const clueCode of awardedClueCodes) {
+      const clueId = clueByCode.get(clueCode);
+      if (!clueId) {
+        throw new Error(`Missing scenario clue for Event 1: ${clueCode}`);
       }
-    }
 
-    await createLog(tx, {
-      gameId,
-      actionType: ACTION_TYPE.EVENT_TRIGGERED,
-      stage: GAME_STAGE.EVENT_1,
-      summary: `${game.scenario.eventTitle} reshapes the investigation.`,
-      detailsJson: { branchKey },
-    });
-  });
+      operations.push(
+        prisma.playerClue.upsert({
+          where: {
+            participantId_scenarioClueId: {
+              participantId: participant.id,
+              scenarioClueId: clueId,
+            },
+          },
+          create: {
+            participantId: participant.id,
+            scenarioClueId: clueId,
+            source: branchClueCodes.has(clueCode)
+              ? CLUE_VISIBILITY_SOURCE.DECISION_OUTCOME
+              : CLUE_VISIBILITY_SOURCE.EVENT_UPDATE,
+          },
+          update: {},
+        }),
+      );
+    }
+  }
+
+  operations.push(
+    prisma.actionLog.create({
+      data: {
+        gameId,
+        actionType: ACTION_TYPE.EVENT_TRIGGERED,
+        stage: GAME_STAGE.EVENT_1,
+        summary: `${game.scenario.eventTitle} reshapes the investigation.`,
+        detailsJson: { branchKey },
+      },
+    }),
+  );
+
+  await prisma.$transaction(operations);
 
   await recomputeGameGoals(prisma, gameId);
 }
 
 export async function startActTwo(gameId: string, createdByUserId: string) {
-  await prisma.$transaction(async (tx) => {
-    await requireOwnedGame(tx, gameId, createdByUserId);
-    const game = await tx.game.findUniqueOrThrow({
-      where: { id: gameId },
-      include: {
-        scenario: {
-          include: {
-            goals: {
-              select: {
-                id: true,
-                roleId: true,
-                stage: true,
-              },
-            },
-          },
-        },
-        participants: {
-          include: {
-            goals: {
-              include: {
-                scenarioGoal: true,
-              },
+  await requireOwnedGame(prisma, gameId, createdByUserId);
+  const game = await prisma.game.findUniqueOrThrow({
+    where: { id: gameId },
+    include: {
+      scenario: {
+        include: {
+          goals: {
+            select: {
+              id: true,
+              roleId: true,
+              stage: true,
             },
           },
         },
       },
-    });
+      participants: {
+        include: {
+          goals: {
+            include: {
+              scenarioGoal: true,
+            },
+          },
+        },
+      },
+    },
+  });
 
-    await tx.game.update({
+  const operations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.game.update({
       where: { id: gameId },
       data: {
         stage: GAME_STAGE.ACT_2,
       },
-    });
+    }),
+  ];
 
-    for (const participant of game.participants) {
-      await tx.gameParticipant.update({
+  for (const participant of game.participants) {
+    operations.push(
+      prisma.gameParticipant.update({
         where: { id: participant.id },
         data: {
           actionsRemaining: game.scenario.actionBudgetPerAct,
         },
-      });
+      }),
+    );
 
-      for (const goal of participant.goals) {
-        await tx.playerGoalState.update({
+    for (const goal of participant.goals) {
+      operations.push(
+        prisma.playerGoalState.update({
           where: { id: goal.id },
           data: {
             status: getActTwoGoalStatus(goal.scenarioGoal.stage, goal.status),
           },
-        });
-      }
+        }),
+      );
     }
+  }
 
-    await createLog(tx, {
-      gameId,
-      actionType: ACTION_TYPE.ACT_STARTED,
-      stage: GAME_STAGE.ACT_2,
-      summary: "Act 2 has started.",
-    });
-  });
+  operations.push(
+    prisma.actionLog.create({
+      data: {
+        gameId,
+        actionType: ACTION_TYPE.ACT_STARTED,
+        stage: GAME_STAGE.ACT_2,
+        summary: "Act 2 has started.",
+      },
+    }),
+  );
+
+  await prisma.$transaction(operations);
 
   await recomputeGameGoals(prisma, gameId);
 }
 
 export async function startFinale(gameId: string, createdByUserId: string) {
-  await prisma.$transaction(async (tx) => {
-    await requireOwnedGame(tx, gameId, createdByUserId);
-    await tx.game.update({
+  await requireOwnedGame(prisma, gameId, createdByUserId);
+  const participants = await prisma.gameParticipant.findMany({
+    where: { gameId },
+    select: { id: true },
+  });
+
+  const operations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.game.update({
       where: { id: gameId },
       data: {
-         stage: GAME_STAGE.FINALE,
+        stage: GAME_STAGE.FINALE,
         finaleStartedAt: new Date(),
       },
-    });
+    }),
+  ];
 
-    const participants = await tx.gameParticipant.findMany({
-      where: { gameId },
-    });
-
-    for (const participant of participants) {
-      await tx.gameParticipant.update({
+  for (const participant of participants) {
+    operations.push(
+      prisma.gameParticipant.update({
         where: { id: participant.id },
         data: {
           actionsRemaining: 0,
         },
-      });
-    }
+      }),
+    );
+  }
 
-    await createLog(tx, {
-      gameId,
-      actionType: ACTION_TYPE.FINALE_STARTED,
-       stage: GAME_STAGE.FINALE,
-      summary: "The finale has begun. Accusations are now open.",
-    });
-  });
+  operations.push(
+    prisma.actionLog.create({
+      data: {
+        gameId,
+        actionType: ACTION_TYPE.FINALE_STARTED,
+        stage: GAME_STAGE.FINALE,
+        summary: "The finale has begun. Accusations are now open.",
+      },
+    }),
+  );
+
+  await prisma.$transaction(operations);
 }
 
 export async function revealGame(gameId: string, createdByUserId: string) {

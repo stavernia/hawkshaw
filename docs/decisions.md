@@ -728,3 +728,38 @@ Consequences:
   without a schema change.
 - Host and room surfaces now render `Unlimited` instead of a numeric remaining-action count.
 - The seeded scenario sync version was bumped so existing games update to the unlimited budget.
+
+## 2026-04-04 - accepted
+
+Decision:
+Use batched Prisma writes for Event 1 clue awards instead of an interactive transaction loop.
+
+Context:
+Triggering Event 1 was still iterating clue awards inside a single interactive transaction, which
+expired once enough player-clue upserts accumulated. The prototype already hit the same problem on
+Act 1 startup, so the event transition needed the same treatment.
+
+Consequences:
+
+- Event 1 now builds its game update, clue awards, and log write as a batched Prisma transaction.
+- Event transitions fail fast with a clear missing-clue error if authored event award codes drift
+  from the persisted scenario.
+- Recompute still runs after the write batch completes, but the transaction itself is no longer
+  vulnerable to timeout from sequential clue-award loops.
+
+## 2026-04-04 - accepted
+
+Decision:
+Include an explicit crime-scene description in the player Overview from Event 1 onward.
+
+Context:
+The prototype had clues about the body and the Study, but it did not give players one clean shared
+statement of what the room actually sees once Victor is found. That left the physical facts of the
+murder feeling oddly implicit compared with the social and goal framing.
+
+Consequences:
+
+- Stage content can now include a `crimeSceneTitle` and `crimeSceneDescription`.
+- The player Overview now renders a dedicated crime-scene card when the current stage includes one.
+- Event 1, Act 2, Finale, and Resolution now explicitly describe Victor's body, the wound, and the
+  disturbed Study so players have a common physical baseline for discussion.

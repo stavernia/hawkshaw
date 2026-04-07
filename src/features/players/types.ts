@@ -46,6 +46,8 @@ export type PlayerDashboardView = {
   scenarioSummary: string;
   eventTitle: string;
   eventDescription: string;
+  crimeSceneTitle?: string;
+  crimeSceneDescription?: string;
   participant: {
     id: EntityId;
     actorName: string;

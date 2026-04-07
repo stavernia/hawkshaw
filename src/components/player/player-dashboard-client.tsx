@@ -175,6 +175,12 @@ export function PlayerDashboardClient({
               <p className="font-medium text-foreground">{currentDashboard.eventTitle}</p>
               <p className="mt-2 break-words text-muted-foreground">{currentDashboard.eventDescription}</p>
             </div>
+            {currentDashboard.crimeSceneDescription ? (
+              <div className="rounded-2xl border bg-white/80 p-4 text-sm">
+                <p className="font-medium text-foreground">{currentDashboard.crimeSceneTitle ?? "Crime Scene"}</p>
+                <p className="mt-2 break-words text-muted-foreground">{currentDashboard.crimeSceneDescription}</p>
+              </div>
+            ) : null}
             <div className="rounded-2xl border bg-white/80 p-4 text-sm">
               <p className="font-medium text-foreground">Who You Are</p>
               <p className="mt-2 text-foreground">{currentDashboard.role?.characterName}</p>
