@@ -238,6 +238,47 @@ Consequences:
 - Existing games keep stable foreign keys where possible because records are updated by code rather
   than replaced wholesale.
 
+## 2026-04-06 - accepted
+
+Decision:
+Keep game-scoped layout fetches header-only, and stop prebuilding every host-controlled player
+dashboard during initial player page render.
+
+Context:
+The scoped host/player layouts were re-fetching full page payloads just to render the header, and
+the player dashboard was eagerly building one full dashboard per controllable seat for host
+impersonation. That made dynamic game routes feel slow in normal development and during live host
+control.
+
+Consequences:
+
+- `app/g/[gameId]/host/layout.tsx` and `app/g/[gameId]/player/layout.tsx` now use lighter shell
+  queries instead of full page-detail queries.
+- Host seat switching on the player view remains available, but each switch now loads the selected
+  seat on demand instead of precomputing all seats up front.
+- Initial game route load does less duplicate auth/data work and should spend less time in
+  application code on repeated opens.
+
+## 2026-04-10 - accepted
+
+Decision:
+Keep the prototype scenario sync check lightweight on already-synced reads, switch host subpages
+client-side after the initial host page render, and use client-side navigation for host player
+impersonation switches.
+
+Context:
+Host and host-controlled player links still felt slow because routine dynamic route opens repeated
+remote Supabase auth and Prisma work. The prototype scenario sync guard was loading the full
+authored scenario graph even when the stored sync version already matched the code version, and
+host section links were query-param route navigations even though the host already had the data
+needed to render each section.
+
+Consequences:
+
+- Already-synced prototype reads now check the sync marker before loading the full scenario graph.
+- Host section buttons switch visible panels locally while preserving shareable `section` URLs.
+- Host player seat switching avoids a full document reload and uses Next client navigation.
+
 ## 2026-03-31 - accepted
 
 Decision:

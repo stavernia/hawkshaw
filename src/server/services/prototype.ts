@@ -921,35 +921,52 @@ async function createLog(
 }
 
 export async function ensurePrototypeScenario(): Promise<ScenarioSummary> {
-  const [existing, syncSetting] = await Promise.all([
-    prisma.scenarioDefinition.findUnique({
-      where: { slug: PROTOTYPE_SCENARIO.slug },
-      include: {
-        roles: true,
-        rooms: true,
-        clues: true,
-        items: true,
-        goals: true,
-        decision: true,
-      },
-    }),
-    prisma.systemSetting.findUnique({
-      where: { key: PROTOTYPE_SCENARIO_SYNC_KEY },
-    }),
-  ]);
+  const syncSetting = await prisma.systemSetting.findUnique({
+    where: { key: PROTOTYPE_SCENARIO_SYNC_KEY },
+  });
 
-  if (existing) {
-    if (syncSetting?.valueJson === PROTOTYPE_SCENARIO_SYNC_VERSION) {
+  if (syncSetting?.valueJson === PROTOTYPE_SCENARIO_SYNC_VERSION) {
+    const syncedScenario = await prisma.scenarioDefinition.findUnique({
+      where: { slug: PROTOTYPE_SCENARIO.slug },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        summary: true,
+        playerCount: true,
+        _count: {
+          select: {
+            rooms: true,
+          },
+        },
+      },
+    });
+
+    if (syncedScenario) {
       return {
-        id: existing.id,
-        slug: existing.slug,
-        title: existing.title,
-        summary: existing.summary,
-        playerCount: existing.playerCount,
-        roomCount: existing.rooms.length,
+        id: syncedScenario.id,
+        slug: syncedScenario.slug,
+        title: syncedScenario.title,
+        summary: syncedScenario.summary,
+        playerCount: syncedScenario.playerCount,
+        roomCount: syncedScenario._count.rooms,
       };
     }
+  }
 
+  const existing = await prisma.scenarioDefinition.findUnique({
+    where: { slug: PROTOTYPE_SCENARIO.slug },
+    include: {
+      roles: true,
+      rooms: true,
+      clues: true,
+      items: true,
+      goals: true,
+      decision: true,
+    },
+  });
+
+  if (existing) {
     await prisma.scenarioDefinition.update({
       where: { id: existing.id },
       data: {
@@ -1715,25 +1732,66 @@ export async function getPlayerDashboard(input: {
   gameId?: string;
   actingParticipantId?: string;
 }): Promise<PlayerDashboard | null> {
-  const dashboard = await buildPlayerDashboardView(input);
+  return buildPlayerDashboardView(input);
+}
 
-  if (!dashboard) {
+export async function getPlayerShellForUser(
+  userId: string,
+  gameId?: string,
+): Promise<{ scenarioTitle: string; stage: PlayerDashboardView["stage"] } | null> {
+  const participant = await getUserParticipantForGameLite(userId, gameId);
+
+  if (!participant) {
     return null;
   }
 
-  if (!dashboard.canControlCharacters) {
-    return dashboard;
+  const scenario = await prisma.scenarioDefinition.findUnique({
+    where: { id: participant.game.scenarioId },
+    select: {
+      title: true,
+    },
+  });
+
+  if (!scenario) {
+    return null;
   }
 
-  const controlledDashboards = await Promise.all(
-    dashboard.seatLinks
-      .filter((seat) => seat.id !== dashboard.participant.id)
-      .map((seat) => buildPlayerDashboardView({ ...input, actingParticipantId: seat.id })),
-  );
+  return {
+    scenarioTitle: scenario.title,
+    stage: mapGameStageToKey(participant.game.stage) as PlayerDashboardView["stage"],
+  };
+}
+
+export async function getHostGameShellForGame(
+  createdByUserId: string,
+  gameId: string,
+): Promise<{ scenarioTitle: string; stage: string } | null> {
+  await ensurePrototypeScenario();
+  const game = await prisma.game.findFirst({
+    where: {
+      id: gameId,
+      createdByUserId,
+      scenario: {
+        slug: PROTOTYPE_SCENARIO.slug,
+      },
+    },
+    select: {
+      stage: true,
+      scenario: {
+        select: {
+          title: true,
+        },
+      },
+    },
+  });
+
+  if (!game) {
+    return null;
+  }
 
   return {
-    ...dashboard,
-    controlledDashboards: controlledDashboards.filter((entry): entry is PlayerDashboardView => !!entry),
+    scenarioTitle: game.scenario.title,
+    stage: mapGameStageToKey(game.stage),
   };
 }
 

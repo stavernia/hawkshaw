@@ -42,11 +42,8 @@ export function PlayerDashboardClient({
   currentTab: PlayerTab;
 }) {
   const [activeTab, setActiveTab] = useState<PlayerTab>(currentTab);
-  const [activeDashboardId, setActiveDashboardId] = useState(dashboard.participant.id);
   const router = useRouter();
-  const controlledDashboards = [dashboard, ...(dashboard.controlledDashboards ?? [])];
-  const currentDashboard =
-    controlledDashboards.find((entry) => entry.participant.id === activeDashboardId) ?? dashboard;
+  const currentDashboard = dashboard;
   const canUseActions = canUseAppActions(currentDashboard.stage);
   const knownFacts = currentDashboard.players.flatMap((player) =>
     player.knownFacts.map((fact) => ({
@@ -57,32 +54,8 @@ export function PlayerDashboardClient({
   const pickpocketTargets = currentDashboard.players.filter((player) => player.canBePickpocketed);
 
   useEffect(() => {
-    setActiveDashboardId(dashboard.participant.id);
-  }, [dashboard.participant.id]);
-
-  useEffect(() => {
-    if (!dashboard.canControlCharacters) {
-      return;
-    }
-
-    const localControlledIds = new Set([
-      dashboard.participant.id,
-      ...(dashboard.controlledDashboards ?? []).map((entry) => entry.participant.id),
-    ]);
-
-    currentDashboard.seatLinks.forEach((seat) => {
-      if (!localControlledIds.has(seat.id)) {
-        router.prefetch(`${seat.href}&tab=${activeTab}`);
-      }
-    });
-  }, [
-    activeTab,
-    currentDashboard.seatLinks,
-    dashboard.canControlCharacters,
-    dashboard.controlledDashboards,
-    dashboard.participant.id,
-    router,
-  ]);
+    setActiveTab(currentTab);
+  }, [currentTab]);
 
   return (
     <div className="grid gap-4 md:gap-6">
@@ -101,16 +74,7 @@ export function PlayerDashboardClient({
                     return;
                   }
 
-                  const href = `${seat.href}&tab=${activeTab}`;
-                  const cached = controlledDashboards.find((entry) => entry.participant.id === nextSeatId);
-
-                  if (cached) {
-                    setActiveDashboardId(nextSeatId);
-                    window.history.replaceState(null, "", href);
-                    return;
-                  }
-
-                  window.location.assign(href);
+                  router.push(`${seat.href}&tab=${activeTab}`);
                 }}
               >
                 {currentDashboard.seatLinks.map((seat) => (
