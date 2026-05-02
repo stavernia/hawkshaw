@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { HostSectionNav, type HostSection } from "@/src/components/host/host-section-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import {
@@ -19,8 +20,6 @@ import { SITE_ROUTES } from "@/src/config/routes";
 export const dynamic = "force-dynamic";
 
 const HOST_SECTIONS = ["settings", "controls", "roster", "rooms", "scenario"] as const;
-
-type HostSection = (typeof HOST_SECTIONS)[number];
 
 function stageLabel(stage?: string) {
   if (!stage) {
@@ -46,10 +45,6 @@ function getHostSection(section?: string): HostSection {
   return "settings";
 }
 
-function hostSectionHref(gameId: string, section: HostSection) {
-  return `${SITE_ROUTES.gameHost(gameId)}?section=${section}`;
-}
-
 export default async function GameHostPage({
   params,
   searchParams,
@@ -71,71 +66,9 @@ export default async function GameHostPage({
 
   return (
     <div className="grid gap-4 md:gap-6">
-      <Card className="app-surface overflow-hidden border-white/70">
-        <CardContent className="px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
-          <div className="-mx-1 overflow-x-auto scrollbar-hidden px-1">
-            <div className="flex w-max gap-1.5">
-              <Link href={hostSectionHref(gameId, "settings")}>
-                <Button
-                  className="h-9 shrink-0 rounded-full px-3.5 text-[14px]"
-                  size="sm"
-                  type="button"
-                  variant={activeSection === "settings" ? "default" : "outline"}
-                >
-                  Settings
-                </Button>
-              </Link>
-              <Link href={hostSectionHref(gameId, "controls")}>
-                <Button
-                  className="h-9 shrink-0 rounded-full px-3.5 text-[14px]"
-                  size="sm"
-                  type="button"
-                  variant={activeSection === "controls" ? "default" : "outline"}
-                >
-                  Controls
-                </Button>
-              </Link>
-              <Link href={hostSectionHref(gameId, "roster")}>
-                <Button
-                  className="h-9 shrink-0 rounded-full px-3.5 text-[14px]"
-                  size="sm"
-                  type="button"
-                  variant={activeSection === "roster" ? "default" : "outline"}
-                >
-                  Roster
-                </Button>
-              </Link>
-              <Link href={hostSectionHref(gameId, "rooms")}>
-                <Button
-                  className="h-9 shrink-0 rounded-full px-3.5 text-[14px]"
-                  size="sm"
-                  type="button"
-                  variant={activeSection === "rooms" ? "default" : "outline"}
-                >
-                  Rooms
-                </Button>
-              </Link>
-              <Link href={hostSectionHref(gameId, "scenario")}>
-                <Button
-                  className="h-9 shrink-0 rounded-full px-3.5 text-[14px]"
-                  size="sm"
-                  type="button"
-                  variant={activeSection === "scenario" ? "default" : "outline"}
-                >
-                  Scenario
-                </Button>
-              </Link>
-              <Link href={SITE_ROUTES.gamePlayer(gameId)}>
-                <Button className="h-9 shrink-0 rounded-full px-3.5 text-[14px]" size="sm" type="button" variant="outline">
-                  Player
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <HostSectionNav gameId={gameId} initialSection={activeSection} />
 
-      {activeSection === "settings" ? (
+      <div data-host-section-panel="settings" className={activeSection === "settings" ? "contents" : "hidden"}>
         <section className="grid gap-4 md:gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card className="app-surface overflow-hidden border-white/70">
             <CardHeader className="space-y-3 p-4 sm:p-6">
@@ -169,9 +102,9 @@ export default async function GameHostPage({
             </CardContent>
           </Card>
         </section>
-      ) : null}
+      </div>
 
-      {activeSection === "controls" ? (
+      <div data-host-section-panel="controls" className={activeSection === "controls" ? "contents" : "hidden"}>
         <div className="grid gap-4">
           <Card className="app-surface overflow-hidden border-white/70">
             <CardHeader>
@@ -224,9 +157,9 @@ export default async function GameHostPage({
             </CardContent>
           </Card>
         </div>
-      ) : null}
+      </div>
 
-      {activeSection === "roster" ? (
+      <div data-host-section-panel="roster" className={activeSection === "roster" ? "contents" : "hidden"}>
         <section className="grid gap-4 md:gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <Card className="app-surface overflow-hidden border-white/70">
           <CardHeader>
@@ -346,9 +279,9 @@ export default async function GameHostPage({
           </CardContent>
           </Card>
         </section>
-      ) : null}
+      </div>
 
-      {activeSection === "rooms" ? (
+      <div data-host-section-panel="rooms" className={activeSection === "rooms" ? "contents" : "hidden"}>
         <Card className="app-surface overflow-hidden border-white/70">
           <CardHeader>
             <CardTitle className="text-2xl sm:text-3xl">Room Links</CardTitle>
@@ -366,9 +299,9 @@ export default async function GameHostPage({
             ))}
           </CardContent>
         </Card>
-      ) : null}
+      </div>
 
-      {activeSection === "scenario" ? (
+      <div data-host-section-panel="scenario" className={activeSection === "scenario" ? "contents" : "hidden"}>
         <div className="grid gap-4 md:gap-6">
           <section className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
             <Card className="app-surface overflow-hidden border-white/70">
@@ -700,7 +633,7 @@ export default async function GameHostPage({
             </CardContent>
           </Card>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

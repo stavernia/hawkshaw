@@ -503,6 +503,7 @@ export function TeaserLandingScene({ isSignedIn = false }: { isSignedIn?: boolea
                       aria-hidden="true"
                       width={678}
                       height={435}
+                      loading="eager"
                       className="absolute left-1/2 top-1/2 h-auto w-[17.5rem] -translate-x-1/2 -translate-y-1/2 opacity-[0.98] drop-shadow-[0_0_24px_rgba(232,182,120,0.24)] md:w-[32.5rem] lg:w-[37rem]"
                       style={{
                         filter:

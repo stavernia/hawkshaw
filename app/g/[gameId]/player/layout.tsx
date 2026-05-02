@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { AppShellHeader } from "@/src/components/layout/app-shell-header";
 import { SITE_ROUTES } from "@/src/config/routes";
 import { requireCurrentUser } from "@/src/lib/auth/session";
-import { getPlayerDashboardForUser } from "@/src/server/services/prototype";
+import { getPlayerShellForUser } from "@/src/server/services/prototype";
 
 function formatStageLabel(stage: string) {
   switch (stage) {
@@ -29,9 +29,9 @@ export default async function ScopedPlayerLayout({
 }: Readonly<{ children: React.ReactNode; params: Promise<{ gameId: string }> }>) {
   const { gameId } = await params;
   const user = await requireCurrentUser(SITE_ROUTES.gamePlayer(gameId));
-  const dashboard = await getPlayerDashboardForUser(user.id, gameId);
+  const playerShell = await getPlayerShellForUser(user.id, gameId);
 
-  if (!dashboard) {
+  if (!playerShell) {
     notFound();
   }
 
@@ -43,8 +43,8 @@ export default async function ScopedPlayerLayout({
         userLabel={userLabel}
         userSubLabel={user.email}
         lobbyHref={SITE_ROUTES.playerHome}
-        scenarioTitle={dashboard.scenarioTitle}
-        stageLabel={formatStageLabel(dashboard.stage)}
+        scenarioTitle={playerShell.scenarioTitle}
+        stageLabel={formatStageLabel(playerShell.stage)}
       />
       {children}
     </div>

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { AppShellHeader } from "@/src/components/layout/app-shell-header";
 import { SITE_ROUTES } from "@/src/config/routes";
 import { requireCurrentUser } from "@/src/lib/auth/session";
-import { getHostGameDetailForGame } from "@/src/server/services/prototype";
+import { getHostGameShellForGame } from "@/src/server/services/prototype";
 
 function formatStageLabel(stage: string) {
   return stage.replace("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -14,7 +14,7 @@ export default async function ScopedHostLayout({
 }: Readonly<{ children: React.ReactNode; params: Promise<{ gameId: string }> }>) {
   const { gameId } = await params;
   const user = await requireCurrentUser(SITE_ROUTES.gameHost(gameId));
-  const hostGame = await getHostGameDetailForGame(user.id, gameId);
+  const hostGame = await getHostGameShellForGame(user.id, gameId);
 
   if (!hostGame) {
     notFound();
@@ -28,8 +28,8 @@ export default async function ScopedHostLayout({
         userLabel={userLabel}
         userSubLabel={user.email}
         lobbyHref={SITE_ROUTES.hostHome}
-        scenarioTitle={hostGame.game.scenarioTitle}
-        stageLabel={formatStageLabel(hostGame.game.currentStage)}
+        scenarioTitle={hostGame.scenarioTitle}
+        stageLabel={formatStageLabel(hostGame.stage)}
       />
       {children}
     </div>
